@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="screen-orientation" content="landscape">
+  <meta name="x5-orientation" content="landscape">
+  <meta name="x5-fullscreen" content="true">
+  <meta name="full-screen" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>老熊格斗1.0 - 来一场熊熊对决</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      touch-callout: none
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: #1b1210;
+      color: #fff;
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      overflow: hidden
+    }
+
+    /* --u = 容器高度的 1%（由 fit() 写入），所有尺寸以横屏高度为基准 */
+    :root {
+      --u: 1vh
+    }
+
+    #app {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden
+    }
+
+    /* 竖屏的触屏设备：把整个游戏旋转 90° 铺满，等同强制横屏；一旦用户横过手机或系统锁定成功，会自动恢复 */
+    @media (orientation: portrait) and (pointer: coarse) {
+      #app {
+        inset: auto;
+        top: 0;
+        left: 100vw;
+        width: 100vh;
+        height: 100vw;
+        transform: rotate(90deg);
+        transform-origin: 0 0
+      }
+    }
+
+    @supports (width: 100dvw) {
+      @media (orientation: portrait) and (pointer: coarse) {
+        #app {
+          left: 100dvw;
+          width: 100dvh;
+          height: 100dvw
+        }
+      }
+    }
+
+    canvas#c {
+      display: block;
+      background: #000;
+      width: min(100vw, calc(100dvh*16/9));
+      aspect-ratio: 16/9
+    }
+
+    #ui {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(4px, calc(var(--u)*2), 10px);
+      background: rgba(27, 18, 16, .95);
+      padding: clamp(6px, calc(var(--u)*3), 14px) clamp(12px, 3vw, 28px);
+      text-align: center;
+      overflow: auto
+    }
+
+    h1 {
+      font-size: clamp(26px, calc(var(--u)*10), 46px);
+      margin: 0;
+      color: #ffb84d;
+      letter-spacing: 4px;
+      text-shadow: 0 3px #7a2e0e
+    }
+
+    h2 {
+      margin: 0;
+      font-size: clamp(17px, calc(var(--u)*5.6), 24px);
+      color: #ffb84d
+    }
+
+    p {
+      margin: 2px
+    }
+
+    small {
+      color: #c9b3a3
+    }
+
+    button {
+      font: inherit;
+      font-size: clamp(14px, calc(var(--u)*4.6), 18px);
+      color: #fff;
+      background: #c4561e;
+      border: 0;
+      border-bottom: 4px solid #7a2e0e;
+      border-radius: 10px;
+      padding: clamp(6px, calc(var(--u)*2.4), 11px) 22px;
+      min-width: clamp(170px, calc(var(--u)*62), 240px)
+    }
+
+    button:active {
+      transform: translateY(2px)
+    }
+
+    button.s {
+      background: #4a3a32;
+      border-color: #2a1f1a;
+      min-width: clamp(100px, calc(var(--u)*30), 120px);
+      font-size: clamp(13px, calc(var(--u)*3.9), 15px)
+    }
+
+    input {
+      width: min(90%, 420px);
+      padding: 10px;
+      border-radius: 8px;
+      border: 0;
+      background: #3a2a22;
+      color: #ffd9a0;
+      font-size: 14px
+    }
+
+    /* 角色选择：横屏下 6 只熊排成一行 */
+    .g {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: clamp(6px, 1.2vw, 12px);
+      width: min(100%, 940px)
+    }
+
+    .nw .g {
+      grid-template-columns: repeat(3, minmax(0, 1fr))
+    }
+
+    /* 横屏两栏：左侧信息 / 右侧按钮 */
+    .hm {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(16px, 5vw, 64px);
+      width: 100%
+    }
+
+    .hl {
+      flex: 1 1 0;
+      max-width: 440px;
+      text-align: left
+    }
+
+    .hl small {
+      display: block;
+      font-size: clamp(11px, calc(var(--u)*3.2), 13px);
+      line-height: 1.7
+    }
+
+    .hl p {
+      margin: 4px 0 clamp(4px, calc(var(--u)*2.5), 12px);
+      font-size: clamp(13px, calc(var(--u)*4), 16px)
+    }
+
+    .hl input {
+      width: 100%;
+      margin-top: 8px
+    }
+
+    .hr {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(6px, calc(var(--u)*2.4), 12px)
+    }
+
+    .bt {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center
+    }
+
+    .cd {
+      background: #3a2a22;
+      border-radius: 12px;
+      padding: clamp(4px, calc(var(--u)*1.6), 8px) 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+      border: 2px solid transparent
+    }
+
+    .cd canvas {
+      width: calc(var(--u)*19);
+      max-width: 100%;
+      height: auto
+    }
+
+    .cd small {
+      font-size: clamp(10px, calc(var(--u)*2.9), 12px);
+      line-height: 1.3
+    }
+
+    .cd:active {
+      border-color: #ffb84d
+    }
+
+    .cd b {
+      font-size: clamp(12px, calc(var(--u)*3.6), 15px)
+    }
+
+    .cd em {
+      font-style: normal;
+      font-size: clamp(10px, calc(var(--u)*3), 12px);
+      color: #ffd54f
+    }
+
+    #pad {
+      --bs: clamp(46px, calc(var(--u)*16), 76px);
+      display: none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 0 calc(clamp(10px, 2.5vw, 28px) + env(safe-area-inset-right)) calc(clamp(8px, calc(var(--u)*3), 20px) + env(safe-area-inset-bottom)) calc(clamp(10px, 2.5vw, 28px) + env(safe-area-inset-left));
+      touch-action: none;
+      pointer-events: none
+    }
+
+    .gp {
+      display: grid;
+      grid-template-columns: repeat(2, var(--bs));
+      grid-template-rows: repeat(2, var(--bs));
+      gap: calc(var(--bs)*.16);
+      order: 2
+    }
+
+    .gp b[data-k=c] {
+      grid-column: 1/3;
+      grid-row: 1;
+      justify-self: center
+    }
+
+    .gp b[data-k=a] {
+      grid-column: 1;
+      grid-row: 2
+    }
+
+    .gp b[data-k=b] {
+      grid-column: 2;
+      grid-row: 2
+    }
+
+    .dp {
+      display: grid;
+      grid-template-columns: repeat(3, var(--bs));
+      gap: calc(var(--bs)*.12);
+      order: 1
+    }
+
+    #mask {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9;
+      background: rgba(0, 0, 0, .95);
+      padding: 12px 22px;
+      text-align: center
+    }
+
+    #mask i {
+      display: block;
+      text-align: right;
+      font-style: normal;
+      font-size: 48px;
+      line-height: 1;
+      color: #ffb84d
+    }
+
+    #mask p {
+      font-size: 20px;
+      line-height: 1.7;
+      margin: 8px 0 12px
+    }
+
+    #pad b {
+      pointer-events: auto;
+      width: var(--bs);
+      height: var(--bs);
+      border-radius: 50%;
+      background: rgba(255, 184, 77, .28);
+      border: 2px solid rgba(255, 184, 77, .7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: calc(var(--bs)*.36);
+      touch-action: none
+    }
+
+    #pad b.on {
+      background: rgba(255, 184, 77, .7)
+    }
+
+    /* 绝招就绪：按键发光 */
+    #pad b.rd {
+      background: rgba(255, 213, 79, .6);
+      border-color: #fff;
+      box-shadow: 0 0 18px 5px #ffb84d
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"><canvas id="c"></canvas>
+    <div id="pad">
+      <div class="dp"><span></span><b data-k="u">▲</b><span></span><b data-k="l">◀</b><b data-k="d">▼</b><b
+          data-k="r">▶</b></div>
+      <div class="gp"><b data-k="a">拳</b><b data-k="b">腿</b><b data-k="c">绝</b></div>
+    </div>
+    <div id="ui"></div>
+    <div id="mask">
+      <i onclick="closeMask()">×</i>
+      <p>点击右上角 ···<br>选择「发送给朋友」，挑选好友发送<br>好友点开链接即可直接加入房间</p>
+      <button class="s" onclick="cp(this)">复制邀请链接</button>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script>
+    // 在线对战信令/打洞配置：默认使用 PeerJS 公共服务。若国内连接不稳，可自建 peerjs-server 并加上 host/port/path。
+    const PC = { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.qq.com:3478' }] } };
+    const W = 800, H = 450, GY = 385, cv = document.getElementById('c'), X = cv.getContext('2d'), $ = id => document.getElementById(id), ui = $('ui');
+    cv.width = W; cv.height = H;
+    const C = [
+      { n: '棕熊·老铁', hp: 100, sp: 1, pw: 1, b: '#8a5a2b', v: '#d2a56c', e: '#8a5a2b', a: '#e33', d: '均衡型', s: '#ff8a30' },
+      { n: '北极熊·冰霸', hp: 116, sp: .88, pw: 1, b: '#eef3f8', v: '#fff', e: '#cfdbe6', a: '#3aa0ff', d: '坚韧型', s: '#7fd4ff' },
+      { n: '熊猫·太极', hp: 98, sp: 1.08, pw: 1, b: '#fff', v: '#fff', e: '#111', l: '#222', a: '#2c2', d: '灵活型', s: '#6fe36f' },
+      { n: '黑熊·疾风', hp: 95, sp: 1.2, pw: .98, b: '#2b2b33', v: '#d9b25f', e: '#2b2b33', a: '#ffd000', d: '速度型', s: '#ffe04a' },
+      { n: '大胡子·岩锤', hp: 104, sp: .85, pw: 1.16, b: '#703820', v: '#c48654', e: '#4a2212', a: '#ff5722', d: '力量型', s: '#ff8a50' },
+      { n: '小壮壮·蹦蹦', hp: 92, sp: 1.25, pw: .96, b: '#c99866', v: '#f0d4a8', e: '#8a5e33', a: '#ffd54f', d: '敏捷型', s: '#fff176' }];
+    /* 每只熊的专属绝招：n 名称 / c 特效主色 / rg AI 出招距离 / A 招式参数（d 总帧数 rf 出手帧 s 发射类 a 判定窗 dm 伤害 r 范围 kb 击退 z 状态 st 硬直） */
+    const SP = [
+      { n: '烈焰熊掌', c: '#ff8a30', rg: [150, 500], A: { d: 38, rf: 12, s: 1 } },
+      { n: '极寒冰刺', c: '#7fd4ff', rg: [110, 380], A: { d: 44, rf: 14, s: 1 } },
+      { n: '太极回旋', c: '#6fe36f', rg: [100, 420], A: { d: 42, rf: 12, s: 1 } },
+      { n: '疾风穿云斩', c: '#ffe04a', rg: [90, 330], A: { d: 36, rf: 6, a: [6, 20], dm: 24, r: 80, kb: 10, z: 'e', st: 34 } },
+      { n: '碎岩震地', c: '#e0b070', rg: [50, 250], A: { d: 50, rf: 18, s: 1 } },
+      { n: '熊掌流星雨', c: '#ff8fe0', rg: [0, 800], A: { d: 48, rf: 14, s: 1 } }];
+    const SD = ['弹道火球·命中燃烧', '地面冰刺·冻结', '回旋飞盘·去回各一击', '穿身突袭·雷击麻痹', '地裂冲击波·眩晕', '天降熊掌·多段连击'];
+    const ZC = { b: '#ff8a30', i: '#bfeaff', d: '#d9a066', e: '#ffe04a' };
+    /* 普通攻击连段表：p 拳 / k 腿，下标 = 连段序号（0 第一段、1 第二段、2 第三段·重击终结）
+       d 总帧数 a 判定窗 dm 伤害 r 范围 kb 击退 st 受击硬直 cw 命中后可取消进入下一段的最早帧 mv 前冲速度 fin 终结技 */
+    const CB = {
+      p: [{ d: 16, a: [4, 7], dm: 4, r: 58, kb: 2, st: 20, cw: 8 },
+      { d: 18, a: [4, 8], dm: 4, r: 62, kb: 2, st: 20, cw: 9, mv: 3.5 },
+      { d: 20, a: [5, 9], dm: 5, r: 64, kb: 3, st: 22, cw: 10, mv: 3.5 },
+      { d: 36, a: [7, 12], dm: 8, r: 72, kb: 9, st: 26, fin: 1, mv: 4 }],
+      k: [{ d: 26, a: [8, 12], dm: 6, r: 80, kb: 3, st: 24, cw: 14 },
+      { d: 28, a: [8, 12], dm: 6, r: 84, kb: 3, st: 26, cw: 15, mv: 3.5 },
+      { d: 30, a: [9, 13], dm: 7, r: 86, kb: 3, st: 30, cw: 16, mv: 3.5 },
+      { d: 46, a: [11, 17], dm: 11, r: 92, kb: 12, st: 30, fin: 1, mv: 4 }]
+    };
+    // 出招速度由移速推导：快熊出招快、慢熊慢（只缩放普通攻击，绝招不缩放）
+    const AS = C.map(c => 1 + (c.sp - 1) * .5),
+      CBS = C.map((c, i) => { const r = {}, s = 1 / AS[i], R = v => Math.max(1, Math.round(v * s)); for (const k in CB) r[k] = CB[k].map(m => { const a0 = R(m.a[0]), a1 = Math.max(a0, R(m.a[1])), o = { ...m, d: R(m.d), a: [a0, a1] }; if (m.cw) o.cw = Math.max(a1 + 1, R(m.cw)); o.d = Math.max(o.d, (o.cw || a1) + 2); return o }); return r });
+    const gA = (a, c, cb) => a == 's' ? SP[c].A : ((CBS[c] || {})[a] || [])[cb | 0];
+    const KM = [{ l: 'a', r: 'd', u: 'w', d: 's', a: 'j', b: 'k', c: 'l' }, { l: 'arrowleft', r: 'arrowright', u: 'arrowup', d: 'arrowdown', a: '1', b: '2', c: '3' }];
+    let mode, stage = 0, c0 = 0, c1 = 1, F = [], P = [], fx = [], pa = [], shk = 0, ph = '', pt = 0, tm = 0, wins = [0, 0], rd = 1, msg = '', me = 0, LK = '', RC = '', conn, peer, K = {}, pad = {}, fr = 0, fl = 0, R = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
+    const wx = /MicroMessenger/i.test(navigator.userAgent), padC = document.querySelector('#pad [data-k=c]');
+    const send = m => { try { conn && conn.open && conn.send(m) } catch (e) { } };
+    const mine = f => mode != 'on' || f.i == me, auth = () => mode != 'on' || me == 0;
+    /* cb 连段序号 / bk bt 连段输入缓冲 / pk 上一帧按键 / cc 当前被连击数 / cd 连击显示计时 / inv 连击保护（无敌）帧 */
+    const mk = (i, c) => ({ i, c, x: i ? 620 : 180, y: 0, vx: 0, vy: 0, f: i ? -1 : 1, hp: C[c].hp, en: 0, st: 'idle', t: 0, n: 0, seen: 0, a: '', A: null, stun: 0, z: 0, gh: 0, cb: 0, bk: '', bt: 0, pk: null, cc: 0, cd: 0, inv: 0, gd: 100, gb: 0 });
+    function reset() { F = [mk(0, c0), mk(1, c1)]; P = []; fx = []; pa = []; shk = 0; ph = 'intro'; pt = 100; tm = 3600; msg = '' }
+    const sendG = () => send({ t: 'g', ph, tm, w: wins, rd, msg });
+    function newMatch() { wins = [0, 0]; rd = 1; reset(); ui.style.display = 'none'; sendG() }
+
+    /* ---------- 粒子 / 屏幕震动 ---------- */
+    const boom = (x, y, c, n = 10, v = 5) => { if (pa.length > 280) return; for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, s = Math.random() * v + 1; pa.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s + 1, l: 18 + Math.random() * 14, m: 32, c, r: 2 + Math.random() * 3 }) } };
+    const tr = (x, y, c, r) => { if (pa.length < 300) pa.push({ x, y, vx: (Math.random() - .5) * 1.5, vy: Math.random() * 1.5, l: 14, m: 14, c, r }) };
+    // fin：重击终结 → 更大的震动 + 白闪 + 冲击火花
+    const hitFx = (x, y, dm, z, fin) => { boom(x, y, ZC[z] || '#fff', Math.min(26, dm * 1.3 | 0), 5); shk = Math.max(shk, dm >= 15 ? 10 : dm >= 9 ? 4 : 0); if (fin) { shk = Math.max(shk, 11); fl = 6; boom(x, y, '#fff', 14, 7) } };
+
+    /* ---------- 战斗逻辑 ---------- */
+    function upd(f, k, o) {
+      const ch = C[f.c]; f.t++; if (f.en < 100) f.en += .05;
+      if (f.cd > 0) f.cd--; if (f.inv > 0) f.inv--;
+      // 防御槽：破防结束后恢复到 45；非防御、非受击时缓慢回复
+      if (f.gb > 0 && --f.gb == 0) f.gd = Math.max(f.gd, 45);
+      if (f.st != 'block' && f.st != 'hit' && f.gd < 100) f.gd = Math.min(100, f.gd + .25);
+      // 连段输入缓冲：必须"重新按下"才算下一段，按住不放不会自动连击
+      const ea = k.a && !(f.pk && f.pk.a), eb = k.b && !(f.pk && f.pk.b); f.pk = { a: !!k.a, b: !!k.b };
+      if (ea || eb) { f.bk = ea ? 'a' : 'b'; f.bt = 10 } else if (f.bt > 0 && --f.bt == 0) f.bk = '';
+      if (f.hp <= 0) { f.st = 'ko'; f.z = 0 }
+      if (f.st == 'hit') { if (f.t > f.stun) { f.st = 'idle'; f.z = 0 } }
+      else if (f.st == 'atk') {
+        if (f.t >= f.A.d) f.st = 'idle';
+        else if (f.A.s && f.t == f.A.rf) rel(f);
+        // 连击：上一段必须命中（或被格挡）、到了取消窗口、且已缓冲了新的拳/腿输入；最多 4 段
+        else if (!f.A.s && f.cb < 3 && f.bk && f.t >= f.A.cw && o.seen === f.n) {
+          const a = f.bk == 'a' ? 'p' : 'k'; f.bk = ''; f.bt = 0; f.cb++; f.t = 0; f.a = a; f.A = gA(a, f.c, f.cb); f.n++; f.f = o.x > f.x ? 1 : -1
+        }
+      }
+      if (['idle', 'walk', 'jump', 'block'].includes(f.st)) {
+        const g = f.y == 0, d = (k.r ? 1 : 0) - (k.l ? 1 : 0); f.f = o.x > f.x ? 1 : -1;
+        const a = k.a ? 'p' : k.b ? 'k' : k.c && f.en >= 50 ? 's' : '';
+        if (a) { f.st = 'atk'; f.t = 0; f.a = a; f.A = gA(a, f.c, 0); f.cb = 0; f.bk = ''; f.bt = 0; f.n++; if (a == 's') f.en -= 50; if (g) f.vx = 0 }
+        else {
+          f.st = !g ? 'jump' : k.d ? 'block' : d ? 'walk' : 'idle';
+          if (g) { f.vx = f.st == 'block' ? 0 : d * 3.3 * ch.sp; if (k.u && !k.d) f.vy = 13.5 * (1 + (ch.sp - 1) * .25) }
+        }
+      }
+      f.vy -= .65; f.y += f.vy;
+      if (f.y <= 0) { f.y = 0; f.vy = 0; if (f.st == 'atk') f.vx = 0 }
+      // 连段中的第 2、3、4 段带一小步前冲，保证连得上
+      if (f.st == 'atk' && f.a != 's' && f.y == 0 && f.A.mv && f.t < 5) f.vx = f.f * f.A.mv;
+      // 黑熊绝招：出手后向前高速突进，穿过对手
+      if (f.st == 'atk' && f.a == 's' && f.c == 3 && f.t >= 6 && f.t < 20) f.vx = f.f * (24 - (f.t - 6) * .9);
+      if (f.st == 'hit' || f.st == 'ko') f.vx *= .92;
+      f.x = Math.max(30, Math.min(770, f.x + f.vx));
+      if (f.y < 30 && o.y < 30 && Math.abs(f.x - o.x) < 34) f.x += (f.x < o.x ? -1 : 1) * 1.5;
+    }
+    function strike(D, A) {
+      const a = A.A;
+      if (A.st == 'atk' && a && a.dm && A.t >= a.a[0] && A.t <= a.a[1] && A.n != D.seen && D.st != 'ko' && !(D.inv > 0)) {
+        const dx = (D.x - A.x) * A.f;
+        if (dx > -10 && dx < a.r && Math.abs(D.y - A.y) < 70) { D.seen = A.n; hurt(D, a.dm * C[A.c].pw, a.kb, A.f, a.z, a.st, true, a.fin) }
+      }
+    }
+    // m：普通攻击（参与连击伤害衰减 / 连击保护）；fin：重击终结
+    function hurt(D, dm, kb, f, z, stn, m, fin) {
+      if (D.inv > 0) return;                                  // 连击保护期：免疫一切伤害
+      const b = D.st == 'block' && D.f == -f; fx.push({ x: D.x, y: D.y + 60, t: 0, b });
+      if (b) {
+        D.hp -= dm * .15; D.vx = f * (fin ? 6 : 2.5); boom(D.x, D.y + 60, '#8cf', fin ? 9 : 4, 3);
+        // 防御槽：每次格挡按伤害消耗（重击终结额外 +8），见底即破防：长硬直 + 眩晕
+        D.gd -= dm * 2.2 + (fin ? 8 : 0);
+        if (D.gd <= 0) { D.gd = 0; D.st = 'hit'; D.t = 0; D.stun = 48; D.gb = 48; D.z = 'd'; D.vx = f * 3; D.cc = 0; D.cd = 0; shk = Math.max(shk, 8); fl = 4; boom(D.x, D.y + 60, '#fff', 16, 6) }
+        return
+      }
+      // 绝招出手前被打断：返还一半能量
+      if (D.st == 'atk' && D.a == 's' && D.A && D.t < D.A.rf) D.en = Math.min(100, D.en + 25);
+      // 连击统计：在受击硬直中又被打中才算连击；普通攻击连击伤害逐段衰减（每段 -12%，最低 50%）
+      D.cc = D.st == 'hit' ? D.cc + 1 : 1; D.cd = 55;
+      if (m) dm *= Math.max(.5, 1 - (D.cc - 1) * .12);
+      D.hp -= dm; D.st = 'hit'; D.t = 0; D.stun = stn || (kb > 6 ? 20 : 13); D.z = z || 0; D.vx = f * kb * .7; if (kb > 6 && D.y == 0) D.vy = 5; D.en = Math.min(100, D.en + dm);
+      // 防无限连：吃满 4 段普通攻击，或被重击终结后，对手获得硬直 + 24 帧的保护期，可以起身反击
+      if (m && (fin || D.cc >= 4)) D.inv = D.stun + 24;
+      hitFx(D.x, D.y + 60, dm, z, fin)
+    }
+
+    /* ---------- 绝招：发射物 / 场地效果 ---------- */
+    // 种类 k：f 火球 / i 冰刺 / y 太极盘 / q 地裂波 / r 熊掌雨；dl 延迟帧；hc 命中冷却；dr 攻击方向
+    function addP(p) {
+      P.push(p);
+      if (p.k == 'q') { shk = 14; boom(p.x, 6, '#b08a5a', 10, 4) }
+      else if (p.k == 'f') boom(p.x, p.y, '#ffb84d', 12, 4)
+      else if (p.k == 'y') boom(p.x, p.y, '#6fe36f', 8, 3)
+    }
+    function rel(f) {
+      const c = f.c, o = F[1 - f.i], d = f.f, b = { o: f.i, c, dr: d, ag: 0, dl: 0, hc: 0 }, L = [];
+      if (c == 0) L.push({ ...b, k: 'f', x: f.x + d * 50, y: f.y + 55, vx: d * 8.5, dm: 20, kb: 9, z: 'b', st: 28 });
+      else if (c == 1) for (let i = 0; i < 5; i++) L.push({ ...b, k: 'i', x: f.x + d * (80 + i * 58), y: 0, vx: 0, dl: i * 5, dm: 18, kb: 0, z: 'i', st: 50 });
+      else if (c == 2) L.push({ ...b, k: 'y', x: f.x + d * 40, y: f.y + 58, vx: d * 9, dm: 11, kb: 5 });
+      else if (c == 4) for (const q of [-1, 1]) L.push({ ...b, k: 'q', dr: q, x: f.x + q * 30, y: 0, vx: q * 6.5, dm: 18, kb: 12, z: 'd', st: 42 });
+      else if (c == 5) for (let i = 0; i < 6; i++) { const ox = [0, -12, 12, -6, 6, 0][i]; L.push({ ...b, k: 'r', x: o.x + ox, ox, y: 430, vx: 0, dl: i * 5, dm: 4, kb: 2 }) }
+      if (L.length) { send({ t: 'p', l: L.map(q => ({ ...q })) }); L.forEach(addP) }
+    }
+    function pu(p, fight) {
+      const d = F[1 - p.o], ow = F[p.o], k = p.k;
+      if (p.dl > 0) { if (--p.dl == 0 && k == 'r') p.x = d.x + p.ox; return 1 }
+      p.ag++; if (p.hc > 0) p.hc--;
+      const dx = Math.abs(p.x - d.x), yo = p.y > d.y - 15 && p.y < d.y + 115;
+      let ov = 0, gone = 0, hc = 999;
+      if (k == 'f') { p.x += p.vx; tr(p.x - p.dr * 20, p.y, '#ff8a30', 5); tr(p.x - p.dr * 32, p.y + 8, '#ffd54f', 3); ov = dx < 36 && yo; gone = ov || p.x < -60 || p.x > W + 60 }
+      else if (k == 'i') { if (p.ag == 1) boom(p.x, 8, '#bfeaff', 8, 3); ov = p.ag >= 3 && p.ag <= 20 && dx < 30 && d.y < 70 && d.z != 'i'; gone = p.ag > 34 }
+      else if (k == 'y') {
+        if (p.ag <= 36) p.x += p.vx; else { const g = ow.x - p.x; if (Math.abs(g) < 26) gone = 1; p.dr = Math.sign(g) || p.dr; p.x += Math.sign(g) * 11 }
+        tr(p.x, p.y + (Math.random() - .5) * 14, '#6fe36f', 3); ov = dx < 34 && yo; hc = 26
+      }
+      else if (k == 'q') { p.x += p.vx; if (p.ag % 3 == 0) tr(p.x, 4, '#a07a50', 5); ov = dx < 30 && d.y < 45; gone = p.ag > 48 || p.x < 5 || p.x > W - 5 }
+      else if (k == 'r') { p.y -= 13; p.x += Math.max(-3, Math.min(3, d.x + p.ox - p.x)); tr(p.x, p.y + 30, '#ff8fe0', 3); ov = Math.abs(p.x - d.x) < 32 && yo; if (ov) gone = 1; else if (p.y <= 0) { boom(p.x, 4, '#ff8fe0', 7, 3); gone = 1 } }
+      if (ov && p.hc <= 0) {
+        if (mine(d) && fight) hurt(d, p.dm * C[p.c].pw, p.kb, p.dr, p.z, p.st);
+        p.hc = hc; if (k == 'f') boom(p.x, p.y, '#ffb84d', 16, 6)
+      }
+      return !gone
+    }
+    function ai(f, o) {
+      const d = o.x - f.x, ad = Math.abs(d), k = {}, to = d > 0 ? 'r' : 'l', aw = d > 0 ? 'l' : 'r', rg = SP[f.c].rg;
+      // AI 连击：普通攻击命中后，有一定概率在取消窗口内补一下（只按一帧，模拟"重新按键"）
+      // 先滚动决策再判断出招中：否则出招期间不倒计时，会反复空挥同一招
+      if (!f.at || --f.at <= 0) { f.at = 10 + Math.random() * 20; f.am = Math.random() } const m = f.am;
+      if (f.st == 'atk' && f.a != 's') { if (f.cb < 3 && f.t == f.A.cw && o.seen === f.n && Math.random() < .7) k[Math.random() < .5 ? 'a' : 'b'] = 1; return k }
+      if (f.en >= 50 && ad >= rg[0] && ad <= rg[1] && m > .9) { k.c = 1; return k }
+      if (ad > 76) { if (m < .85) k[to] = 1; if (m > .97) k.u = 1 }   // 间距按招式判定范围：拳 58、腿 80 起
+      else if (ad > 52) { if (m < .3) k[to] = 1; else if (m < .75) k.b = 1; else if (m < .85) k.d = 1 }
+      else { if (m < .45) k.a = 1; else if (m < .7) k.b = 1; else if (m < .85) k.d = 1 }
+      return k
+    }
+    function inp(i) { const ms = mode == '2p' ? [KM[i]] : KM, o = {}; for (const k of 'lrudabc') o[k] = ms.some(m => K[m[k]]) || (i == (mode == 'on' ? me : 0) && pad[k]); return o }
+
+    function step() {
+      fr++; const [A, B] = F, fight = ph == 'fight';
+      for (const f of F) {
+        const o = F[1 - f.i];
+        // 黑熊突进残影轨迹（两端各自记录，纯视觉）
+        if (f.st == 'atk' && f.a == 's' && f.c == 3 && f.t >= 6) { f.gh = f.gh || []; f.gh.push(f.x); if (f.gh.length > 6) f.gh.shift() } else f.gh = 0;
+        if (!mine(f)) { f.t++; continue }
+        upd(f, fight ? (f.i == 1 && mode == 'ai' ? ai(f, o) : inp(f.i)) : {}, o);
+        if (fight) strike(f, o)
+      }
+      P = P.filter(p => pu(p, fight));
+      pa = pa.filter(q => { q.x += q.vx; q.y += q.vy; q.vy -= .25; return --q.l > 0 }); if (shk > 0) shk--; if (fl > 0) fl--;
+      fx.forEach(e => e.t++); fx = fx.filter(e => e.t < 12);
+      if (mode == 'on') {
+        if (fr % 2 == 0) { const f = F[me]; send({ t: 's', x: f.x, y: f.y, f: f.f, st: f.st, tt: f.t, hp: f.hp, en: f.en, n: f.n, a: f.a, vx: f.vx, z: f.z, cb: f.cb, sn: f.seen, cc: f.cc, cd: f.cd, iv: f.inv, gd: f.gd, gb: f.gb }) }
+        if (me == 0 && fr % 6 == 0) sendG()
+      }
+      if (ph == 'intro') pt--;
+      if (!auth()) return;
+      if (ph == 'intro') { if (pt <= 0) { ph = 'fight'; sendG() } }
+      else if (fight) { tm--; if (A.hp <= 0 || B.hp <= 0 || tm <= 0) { const ra = A.hp / C[A.c].hp, rb = B.hp / C[B.c].hp, w = ra > rb ? 0 : rb > ra ? 1 : -1; if (w >= 0) wins[w]++; msg = tm <= 0 ? '时间到' : 'K.O.'; ph = 'ko'; pt = 150; sendG() } }
+      else if (ph == 'ko') { if (--pt <= 0) { if (wins[0] > 1 || wins[1] > 1) { ph = 'over'; sendG(); showOver() } else { rd++; reset(); sendG() } } }
+    }
+
+    /* ---------- 绘制 ---------- */
+    function bear(X, f, px, py) {
+      const h = C[f.c], L = h.l || h.b, at = f.st == 'atk', kk = at && f.a == 'k', pn = at && f.a == 'p', sp = at && f.a == 's', rf = sp ? f.A.rf : 0, cg = sp && f.t < rf, bl = f.st == 'block',
+        e = at ? Math.sin(Math.PI * Math.min(1, f.t / f.A.d)) * 46 : 0, w = f.st == 'walk' ? Math.sin(f.t / 3) * 7 : 0,
+        ft = f.c == 4 ? 1.4 : f.c == 5 ? 1.45 : 1,              // 胖度：大胡子熊1.4 / 壮壮熊1.45，其余熊为1
+        hf = 1 + (ft - 1) * .45, lg = 10 * (1 + (ft - 1) * .9), sx = 14 * ft;
+      X.save(); X.translate(px, py); X.scale(f.f, 1);
+      // 连段动作：cb 0 直拳/低扫腿 → 1 摆拳(后手)/回旋踢 → 2 前手勾拳/高位回旋踢 → 3 上勾拳/高位旋踢（终结）
+      const cb = f.cb | 0, cm = at && !sp, ex = e / 46, kxF = [1, 1.1, 1.2, 1.35][cb], kyF = [.3, -.75, -1.05, -1.5][cb];
+      if (cm) {
+        const hop = pn ? [0, 0, 0, 24][cb] : [0, 0, 6, 14][cb], lean = pn ? [.08, .14, .17, -.1][cb] : [-.06, -.2, -.26, -.35][cb];
+        X.translate(0, -hop * ex); X.rotate(lean * ex)          // 出招时身体前倾/后仰/腾起
+      } else if (f.st == 'hit') X.rotate(-.18 * Math.max(0, 1 - f.t / 10));   // 受击后仰
+      if (f.st == 'ko') X.rotate(-Math.min(1.45, f.t / 8));
+      if (sp && f.c == 4 && cg) X.translate(0, -50 * Math.sin(Math.PI * f.t / rf));
+      if (sp && f.c == 3 && f.t >= rf && f.t < 20) X.rotate(.28);
+      if ((f.st == 'hit' && f.t % 4 < 2) || (f.inv > 0 && f.st != 'hit' && fr % 6 < 3)) X.globalAlpha = .6;   // 受击闪烁 / 保护期闪烁
+      X.lineCap = 'round'; X.lineWidth = 13 * (1 + (ft - 1) * .8);   // 四肢变粗
+      const ln = (c, a, b, d, g) => { X.strokeStyle = c; X.beginPath(); X.moveTo(a, b); X.lineTo(d, g); X.stroke() },
+        el = (c, a, b, rx, ry) => { X.fillStyle = c; X.beginPath(); X.ellipse(a, b, rx, ry, 0, 0, 7); X.fill() };
+      ln(L, -lg, -16, -lg - w, 0); ln(L, lg, -16, kk ? lg + e * kxF : lg + w, kk ? -16 + e * kyF : 0);
+      el(h.b, 0, -42, 24 * ft, 27 * hf); el(h.v, 4, -40, 14 * ft, 18 * hf);           // 圆滚滚的身体和大肚皮
+      el(h.e, 4 - 13 * hf, -100 - (hf - 1) * 22, 7, 7); el(h.e, 4 + 12 * hf, -100 - (hf - 1) * 22, 7, 7);
+      el(h.b, 4, -84, 19 * hf, 18 * hf);                                              // 胖脸
+      el(h.v, 4 + 11 * hf, -79, 10 * hf, 8 * hf);
+      if (f.c == 4) {                                                                 // 大胡子熊：络腮胡
+        X.save(); X.fillStyle = '#26130a'; X.beginPath();
+        X.moveTo(-17, -95); X.lineTo(-23, -80); X.lineTo(-20, -66); X.lineTo(-13, -58); X.lineTo(-9, -50);
+        X.lineTo(-3, -57); X.lineTo(1, -47); X.lineTo(7, -55); X.lineTo(12, -47); X.lineTo(17, -55);
+        X.lineTo(23, -51); X.lineTo(26, -61); X.lineTo(30, -70); X.lineTo(27, -75);
+        X.quadraticCurveTo(12, -69, 2, -77); X.lineTo(-12, -86); X.closePath(); X.fill();
+        el('#26130a', 14, -75, 8, 4); el('#26130a', 26, -74, 6, 3.5);                 // 八字胡
+        X.strokeStyle = '#5a3420'; X.lineWidth = 2; X.beginPath();
+        for (const a of [-14, -5, 5, 15]) { X.moveTo(a, -64); X.lineTo(a - 1, -54) }
+        X.stroke(); X.restore()
+      }
+      el('#111', 4 + 18 * hf, -82, 3.5, 3);
+      if (f.c == 2) el('#111', 10, -87, 6, 7);
+      el(f.c == 2 ? '#fff' : '#111', 4 + 7 * hf, -88, 2.6, 2.6);
+      X.fillStyle = h.a; X.fillRect(4 - 19 * hf, -84 - 11 * hf, 38 * hf, 5);
+      // 手臂：直拳(前手伸出) / 摆拳(前手护头，后手打出) / 上勾拳(由下向上挥起)；踢腿时双手抬起护头
+      const am = cg ? [12, -112] : sp ? [24 + 40 * Math.max(0, 1 - (f.t - rf) / 12), -62] : bl ? [22, -80] : pn ? (cb == 0 ? [14 + e, -58] : cb == 1 ? [8, -70] : cb == 2 ? [10 + e * 1.1, -66] : [16 + ex * 14, -34 - ex * 92]) : kk ? [12, -76] : [20, -44];
+      ln(L, sx, -58, am[0] + sx - 14, am[1]);                                         // 肩膀随身体变宽
+      if (pn && cb == 1) ln(L, -sx * .4, -58, sx * .4 + 18 + e * 1.15, -64);          // 后手摆拳
+      // 出招刀光：判定窗口前后短暂显示，终结技更粗更亮
+      if (cm && f.A.a && f.t >= f.A.a[0] - 1 && f.t <= f.A.a[1] + 4) {
+        const q = 1 - Math.max(0, f.t - f.A.a[0]) / (f.A.a[1] - f.A.a[0] + 5), fn = f.A.fin;
+        X.globalAlpha = Math.max(0, .85 * q); X.strokeStyle = fn ? '#fff' : '#ffe2b0'; X.lineWidth = fn ? 7 : 3.5;
+        const sw = (cx, cy, r, a0, a1) => { X.beginPath(); X.arc(cx, cy, r, a0, a1, true); X.stroke() };
+        if (pn) {
+          if (cb == 3) { sw(14, -62, 70, .6, -1.4); sw(14, -62, 54, .5, -1.2) }
+          else { const y = cb ? -66 : -58, l = 80 + Math.min(cb, 2) * 14; X.beginPath(); X.moveTo(44, y - 6); X.lineTo(l, y - 6); X.moveTo(40, y + 6); X.lineTo(l - 10, y + 6); X.stroke() }
+        }
+        else if (cb == 0) sw(0, -30, 64, .5, -.3);
+        else if (cb == 1) sw(0, -40, 76, .7, -.8);
+        else if (cb == 2) { sw(0, -42, 82, .8, -.95); sw(0, -42, 68, .7, -.8) }
+        else { sw(0, -44, 92, 1, -1.2); sw(0, -44, 76, .9, -1) }
+      }
+      X.restore()
+    }
+    const bg = document.createElement('canvas'); bg.width = W; bg.height = H;
+    (g => {
+      let q = g.createLinearGradient(0, 0, 0, GY); q.addColorStop(0, '#2a1740'); q.addColorStop(.6, '#c4561e'); q.addColorStop(1, '#ffb84d'); g.fillStyle = q; g.fillRect(0, 0, W, H);
+      g.fillStyle = '#ffe9b0'; g.beginPath(); g.arc(560, 250, 60, 0, 7); g.fill();
+      g.fillStyle = '#4a2430'; g.beginPath(); g.moveTo(0, GY); for (let x = 0; x <= W; x += 50)g.lineTo(x, 250 + Math.sin(x * .013) * 50); g.lineTo(W, GY); g.fill();
+      g.fillStyle = '#2a1520'; for (let x = 10; x < W; x += 62) { const h = 70 + (x * 7 % 40); g.beginPath(); g.moveTo(x, GY); g.lineTo(x + 22, GY - h); g.lineTo(x + 44, GY); g.fill() }
+      g.fillStyle = '#5b3a24'; g.fillRect(0, GY, W, H - GY); g.fillStyle = '#7a5232'; g.fillRect(0, GY, W, 6)
+    })(bg.getContext('2d'));
+
+    // 太极图
+    function yy(x, y, r, a) {
+      X.save(); X.translate(x, y); X.rotate(a); X.fillStyle = '#fff'; X.beginPath(); X.arc(0, 0, r, 0, 7); X.fill();
+      X.fillStyle = '#111'; X.beginPath(); X.arc(0, 0, r, Math.PI / 2, Math.PI * 1.5); X.arc(0, -r / 2, r / 2, -Math.PI / 2, Math.PI / 2); X.arc(0, r / 2, r / 2, -Math.PI / 2, Math.PI / 2, true); X.fill();
+      X.fillStyle = '#fff'; X.beginPath(); X.arc(0, -r / 2, r / 7, 0, 7); X.fill(); X.fillStyle = '#111'; X.beginPath(); X.arc(0, r / 2, r / 7, 0, 7); X.fill();
+      X.strokeStyle = '#111'; X.lineWidth = 2; X.beginPath(); X.arc(0, 0, r, 0, 7); X.stroke(); X.restore()
+    }
+    // 蓄力光环：每只熊不同的蓄力表现
+    function aura(f) {
+      const x = f.x, y = GY - f.y - 50, s = SP[f.c].c, t = f.t, c = f.c;
+      X.globalAlpha = .28; X.fillStyle = s; X.beginPath(); X.arc(x, y, 34 + t * 2 + Math.sin(t) * 4, 0, 7); X.fill(); X.globalAlpha = 1;
+      for (let i = 0; i < 6; i++) { const a = i * 1.05 + t * .35, r = 85 - (t * 5 + i * 11) % 70; X.fillStyle = s; X.fillRect(x + Math.cos(a) * r - 3, y + Math.sin(a) * r - 3, 6, 6) }
+      X.strokeStyle = s; X.lineWidth = 3;
+      if (c == 1 || c == 4) { X.beginPath(); X.ellipse(f.x, GY + 4, 20 + t * 3.5, 5 + t * .5, 0, 0, 7); X.stroke() }
+      if (c == 0) { X.fillStyle = '#ffb84d'; X.beginPath(); X.arc(x + f.f * 12, y - 72, 4 + t * .8, 0, 7); X.fill() }
+      else if (c == 2) yy(x + f.f * 12, y - 75, 5 + t * 1.2, t * .4)
+      else if (c == 3) { X.beginPath(); X.moveTo(x - 34, y); for (let j = 1; j < 6; j++)X.lineTo(x - 34 + j * 14, y + (j % 2 ? 18 : -18) + Math.random() * 8); X.stroke() }
+      else if (c == 5) { X.font = '20px serif'; X.fillStyle = s; for (let j = 0; j < 3; j++)X.fillText('★', x + (j - 1) * 28, y - 85 - (t * 3 + j * 10) % 30) }
+    }
+    // 状态特效：冰冻 / 眩晕 / 燃烧 / 雷击
+    function zfx(f) {
+      if (!f.z) return; const x = f.x, y = GY - f.y;
+      if (f.z == 'i') { X.fillStyle = 'rgba(150,220,255,.55)'; X.strokeStyle = '#fff'; X.lineWidth = 3; X.fillRect(x - 34, y - 118, 68, 124); X.strokeRect(x - 34, y - 118, 68, 124); X.fillStyle = 'rgba(255,255,255,.6)'; X.fillRect(x - 22, y - 104, 6, 40) }
+      else if (f.z == 'd') { X.font = '18px sans-serif'; X.fillStyle = '#ffd54f'; for (let i = 0; i < 3; i++) { const a = fr * .15 + i * 2.1; X.fillText('★', x + Math.cos(a) * 26, y - 118 + Math.sin(a) * 7) } }
+      else if (f.z == 'b') { X.font = '24px serif'; for (let i = 0; i < 3; i++)X.fillText('🔥', x + (i - 1) * 22, y - 20 - (i % 2) * 40 - (fr * 2 + i * 15) % 20) }
+      else if (f.z == 'e') { X.strokeStyle = '#ffe04a'; X.lineWidth = 3; for (let i = 0; i < 3; i++) { const bx = x - 30 + i * 30; X.beginPath(); X.moveTo(bx, y - 115); X.lineTo(bx + (Math.random() - .5) * 16, y - 80); X.lineTo(bx - 8, y - 50); X.lineTo(bx + 6, y - 10); X.stroke() } }
+    }
+    function drawP(p) {
+      if (p.dl > 0) return;
+      const k = p.k, ag = p.ag, s = SP[p.c].c;
+      X.save(); X.translate(p.x, GY - p.y); X.shadowColor = s; X.shadowBlur = 16;
+      if (k == 'f') {
+        X.fillStyle = '#ff6a1a'; X.beginPath(); X.moveTo(-p.dr * (62 + Math.sin(ag) * 10), 0); X.lineTo(0, -22); X.lineTo(0, 22); X.fill();
+        X.fillStyle = '#ffb84d'; X.beginPath(); X.arc(0, 0, 25, 0, 7); X.fill();
+        X.fillStyle = '#fff2b0'; X.beginPath(); X.arc(p.dr * 4, 0, 15, 0, 7); X.fill();
+        X.shadowBlur = 0; X.font = '28px serif'; X.fillText('🐾', 0, 10)
+      } else if (k == 'i') {
+        const h = ag < 5 ? ag * 22 : ag < 22 ? 110 : Math.max(0, 110 - (ag - 22) * 9);
+        const sk = (cx, hh, w) => { X.fillStyle = '#bfeaff'; X.strokeStyle = '#fff'; X.lineWidth = 2; X.beginPath(); X.moveTo(cx - w, 0); X.lineTo(cx, -hh); X.lineTo(cx + w, 0); X.closePath(); X.fill(); X.stroke(); X.fillStyle = 'rgba(255,255,255,.7)'; X.beginPath(); X.moveTo(cx - w, 0); X.lineTo(cx, -hh); X.lineTo(cx - w * .2, 0); X.fill() };
+        sk(0, h, 20); sk(-20, h * .55, 12); sk(20, h * .6, 12)
+      } else if (k == 'y') yy(0, 0, 22, ag * .35)
+      else if (k == 'q') {
+        X.shadowBlur = 0; X.fillStyle = '#6b4a30'; X.strokeStyle = '#caa070'; X.lineWidth = 2;
+        for (let i = 0; i < 4; i++) { const ox = -Math.sign(p.vx) * i * 15, hh = 44 - i * 9 + (ag * 7 + i * 3) % 6; X.beginPath(); X.moveTo(ox - 9, 0); X.lineTo(ox - 1, -hh); X.lineTo(ox + 9, 0); X.closePath(); X.fill(); X.stroke() }
+      } else if (k == 'r') {
+        X.shadowBlur = 0; X.globalAlpha = .3; X.fillStyle = s; X.beginPath(); X.ellipse(0, p.y, 26, 6, 0, 0, 7); X.fill();   // 落点预警
+        X.globalAlpha = .5; X.strokeStyle = s; X.lineWidth = 7; X.beginPath(); X.moveTo(0, -60); X.lineTo(0, 0); X.stroke(); X.globalAlpha = 1;
+        X.shadowBlur = 12; X.font = '34px serif'; X.fillText('🐾', 0, 12)
+      }
+      X.restore()
+    }
+    function draw() {
+      X.clearRect(0, 0, W, H); if (!F.length) { X.drawImage(bg, 0, 0); return }
+      const cast = ph == 'fight' && F.find(f => f.st == 'atk' && f.a == 's');
+      X.save(); if (shk > 0) X.translate((Math.random() - .5) * shk, (Math.random() - .5) * shk);
+      X.drawImage(bg, 0, 0); X.textAlign = 'center';
+      if (cast && cast.t < 34) { X.fillStyle = 'rgba(0,0,0,' + .45 * Math.min(1, cast.t / 5, (34 - cast.t) / 10) + ')'; X.fillRect(-10, -10, W + 20, H + 20) }
+      for (const f of F) {
+        X.fillStyle = 'rgba(0,0,0,.3)'; X.beginPath(); X.ellipse(f.x, GY + 4, 28 - f.y / 8, 7, 0, 0, 7); X.fill();
+        const sa = f.st == 'atk' && f.a == 's', y = GY - f.y;
+        if (sa && f.t < f.A.rf) aura(f);
+        if (f.gh) {
+          f.gh.forEach((gx, i) => { X.globalAlpha = .08 + i * .05; bear(X, f, gx, y) }); X.globalAlpha = 1;
+          X.strokeStyle = '#ffe04a'; X.lineWidth = 3; X.beginPath(); X.moveTo(f.gh[0], y - 50); f.gh.forEach(gx => X.lineTo(gx, y - 50 + (Math.random() - .5) * 30)); X.stroke()
+        }
+        bear(X, f, f.x, y); zfx(f);
+        if (f.gb > 0) { X.font = 'bold 22px sans-serif'; X.lineWidth = 4; X.strokeStyle = '#7a2e0e'; X.fillStyle = '#fff'; X.strokeText('破防！', f.x, y - 135); X.fillText('破防！', f.x, y - 135) }
+      }
+      for (const p of P) drawP(p);
+      for (const q of pa) { X.globalAlpha = Math.max(0, q.l / q.m); X.fillStyle = q.c; X.beginPath(); X.arc(q.x, GY - q.y, q.r, 0, 7); X.fill() } X.globalAlpha = 1;
+      for (const e of fx) { X.strokeStyle = e.b ? '#8cf' : '#fff'; X.lineWidth = 3; X.beginPath(); X.arc(e.x, GY - e.y, 6 + e.t * 3, 0, 7); X.stroke() }
+      X.restore();
+      // 终结技命中白闪
+      if (fl > 0) { X.fillStyle = 'rgba(255,255,255,' + fl * .06 + ')'; X.fillRect(0, 0, W, H) }
+      F.forEach((f, i) => {
+        const hp = Math.max(0, f.hp) / C[f.c].hp, x0 = i ? W - 360 : 30, rdy = f.en >= 50;
+        X.fillStyle = '#000a'; X.fillRect(x0 - 3, 17, 336, 22); X.fillStyle = hp > .3 ? '#ffb84d' : '#f44'; X.fillRect(i ? x0 + 330 * (1 - hp) : x0, 20, 330 * hp, 16);
+        X.fillStyle = rdy ? (fr % 24 < 12 ? '#ffd54f' : '#ff9800') : '#4af'; X.fillRect(i ? x0 + 330 * (1 - f.en / 100) : x0, 42, 330 * f.en / 100, 6);
+        X.fillStyle = '#fffa'; X.fillRect(x0 + 164, 41, 2, 8); X.fillStyle = '#000a'; X.fillRect(x0 - 1, 50, 332, 11); X.fillStyle = f.gd < 25 ? '#ff6a5a' : '#7fe0a0'; X.fillRect(i ? x0 + 330 * (1 - f.gd / 100) : x0, 51, 330 * Math.max(0, f.gd) / 100, 9);
+        // 防御槽被消耗时整条闪白（本地根据数值变化触发，联机双方都能看到）
+        if (f.gd < f.gl - .5) f.gf = 14; f.gl = f.gd; if (f.gf > 0) { f.gf--; X.fillStyle = 'rgba(255,255,255,' + f.gf / 20 + ')'; X.fillRect(x0 - 1, 50, 332, 11) }
+        X.fillStyle = '#fff'; X.font = 'bold 15px sans-serif'; X.textAlign = i ? 'right' : 'left'; X.fillText(C[f.c].n, i ? x0 + 330 : x0, 78);
+        if (rdy) { X.fillStyle = '#ffd54f'; X.font = 'bold 13px sans-serif'; X.textAlign = i ? 'left' : 'right'; X.fillText('★' + SP[f.c].n, i ? x0 : x0 + 330, 78) }
+        for (let j = 0; j < 2; j++) { X.fillStyle = j < wins[i] ? '#f33' : '#5a4a42'; X.beginPath(); X.arc(i ? x0 + 322 - j * 20 : x0 + 8 + j * 20, 92, 6, 0, 7); X.fill() }
+      });
+      // 连击计数：显示在进攻方一侧（被打的是 f，进攻方在另一边），出现时放大弹出
+      F.forEach((f, i) => {
+        if (!(f.cd > 0 && f.cc >= 2)) return;
+        const pop = Math.max(0, f.cd - 48) / 7, cx = i ? 105 : W - 105, txt = f.cc + ' 连击';
+        X.save(); X.globalAlpha = Math.min(1, f.cd / 12); X.textAlign = 'center';
+        X.font = 'italic bold ' + (40 + pop * 16 + Math.min(f.cc, 5) * 3 | 0) + 'px sans-serif'; X.lineWidth = 6; X.strokeStyle = '#7a2e0e';
+        X.strokeText(txt, cx, 150); X.fillStyle = f.cc >= 3 ? '#ffd54f' : '#ffb84d'; X.fillText(txt, cx, 150);
+        X.restore()
+      });
+      X.textAlign = 'center'; X.fillStyle = '#fff'; X.font = 'bold 32px sans-serif'; X.fillText(Math.max(0, Math.ceil(tm / 60)), W / 2, 40);
+      const t = ph == 'intro' ? (pt > 45 ? 'ROUND ' + rd : 'FIGHT!') : ph == 'ko' ? msg : '';
+      if (t) { X.font = 'bold 64px sans-serif'; X.lineWidth = 8; X.strokeStyle = '#7a2e0e'; X.strokeText(t, W / 2, 200); X.fillStyle = '#ffb84d'; X.fillText(t, W / 2, 200) }
+      // 绝招名称横幅（由角色状态驱动，联机双方都能看到）
+      if (cast && cast.t < 34) {
+        const t = cast.t, s = SP[cast.c].c, dx = (1 - Math.min(1, t / 8)) * 220 * (cast.i ? 1 : -1);
+        X.globalAlpha = Math.min(1, t / 5, (34 - t) / 8); X.fillStyle = 'rgba(0,0,0,.6)'; X.fillRect(0, 118, W, 62); X.fillStyle = s; X.fillRect(0, 118, W, 3); X.fillRect(0, 177, W, 3);
+        X.font = 'italic bold 44px sans-serif'; X.lineWidth = 7; X.strokeStyle = '#000'; X.strokeText(SP[cast.c].n + '！', W / 2 + dx, 163); X.fillText(SP[cast.c].n + '！', W / 2 + dx, 163); X.globalAlpha = 1
+      }
+      padC.classList.toggle('rd', F[mode == 'on' ? me : 0].en >= 50 && ph == 'fight')
+    }
+    let last = 0, acc = 0;
+    (function loop(ts) {
+      requestAnimationFrame(loop); acc += Math.min(50, ts - last); last = ts;
+      while (acc >= 16.67) { acc -= 16.67; if (F.length && ph != 'over' && ui.style.display == 'none') step() } draw()
+    })(0);
+
+    /* ---------- 横屏适配 ---------- */
+    // 以容器（横屏）高度为基准：画布按 16:9 最大化铺满，--u 供 CSS 缩放菜单/按键，窄屏时角色选择改为 3 列
+    function fit() {
+      const a = $('app'), aw = a.clientWidth, ah = a.clientHeight; if (!aw || !ah) return;
+      const w = Math.min(aw, ah * 16 / 9);
+      cv.style.width = w + 'px'; cv.style.height = w * 9 / 16 + 'px';
+      document.documentElement.style.setProperty('--u', ah / 100 + 'px');
+      a.classList.toggle('nw', aw < 560)
+    }
+    // 触屏设备：用户点击后进入全屏并锁定横屏（需要用户手势；失败则忽略，竖屏时由 CSS 旋转兜底）
+    function lockLand() {
+      try {
+        if (!matchMedia('(pointer:coarse)').matches) return;
+        const d = document.documentElement, rq = d.requestFullscreen || d.webkitRequestFullscreen, lk = () => { try { screen.orientation.lock('landscape').catch(() => { }) } catch (e) { } };
+        if (rq && !document.fullscreenElement && !document.webkitFullscreenElement) { const r = rq.call(d); r && r.then ? r.then(lk).catch(() => { }) : lk() } else lk()
+      } catch (e) { }
+    }
+    addEventListener('resize', fit); addEventListener('orientationchange', () => setTimeout(fit, 250)); fit();
+
+    /* ---------- 界面流程 ---------- */
+    const show = h => { ui.innerHTML = h; ui.style.display = 'flex' };
+    function dis() { try { peer && peer.destroy() } catch (e) { } conn = peer = null; setShare('') }
+    function home() {
+      dis(); F = []; R = ''; $('pad').style.display = 'none';
+      show(`<div class=hm><div class=hl><h1>老熊格斗1.0</h1><p>🐻 各路熊熊高手，擂台见真章 🐻</p><small>手机：屏幕按键　电脑：WASD+JKL / 方向键+123<br>↑ 跳　↓ 防御　← → 左右移动　「绝」需蓝条过半<br>连击：拳/腿命中后再按一次，最多4段（拳腿任意搭配），第4段为重击终结<br>打满4段或吃到重击后对手有短暂保护，无法无限连击<br>防御（↓）会消耗防御槽（血条下方细条），见底即破防眩晕；超时按血量百分比判定</small></div><div class=hr><button onclick="go('ai')">人机对战</button><button onclick="go('2p')">本机双人</button><button onclick="go('on')">创建房间 · 邀请微信好友</button><button onclick="joinUI()">输入房间号加入</button></div></div>`)
+    }
+    function go(m) {
+      lockLand(); mode = m; stage = 0;
+      if (m == 'on' && (typeof Peer == 'undefined' || typeof RTCPeerConnection == 'undefined')) return show('<h2>当前环境无法联机</h2><p>请检查网络，或用系统浏览器（Safari / Chrome）打开本页</p><button class=s onclick=home()>返回</button>');
+      sel(m == '2p' ? 'P1 选择角色' : R ? '选择你的熊' : '选择你的熊（你是房主）')
+    }
+    function sel(t) {
+      show(`<h2>${t}</h2><div class=g>${C.map((c, i) => `<div class=cd onclick=pick(${i})><canvas id=m${i} width=100 height=120></canvas><b>${c.n}</b><small>${c.d}</small><em>绝：${SP[i].n}</em><small>${SD[i]}</small></div>`).join('')}</div><button class=s onclick=home()>返回</button>`);
+      C.forEach((c, i) => bear($('m' + i).getContext('2d'), { c: i, f: 1, st: 'idle', t: 0 }, 50, 114))
+    }
+    function pick(i) {
+      if (mode == 'ai') {
+        c0 = i;
+        // 随机选一个不同的角色作为AI对手，自动适配角色总数
+        let offset = 1 + Math.floor(Math.random() * (C.length - 1));
+        c1 = (i + offset) % C.length;
+        start()
+      }
+      else if (mode == '2p') { if (!stage) { c0 = i; stage = 1; sel('P2 选择角色') } else { c1 = i; start() } }
+      else { c0 = i; R ? join() : host() }
+    }
+    function start() { $('pad').style.display = mode == '2p' ? 'none' : 'flex'; wins = [0, 0]; rd = 1; reset(); ui.style.display = 'none' }
+    const er = e => show(`<h2>连接失败</h2><p>${e.type == 'peer-unavailable' ? '房间不存在或已关闭，请核对房间号' : e.type || e}</p><button onclick=home()>返回</button>`);
+    const lost = () => { if (ph != 'over') { F = []; show('<h2>对方已断开</h2><button onclick=home()>返回主菜单</button>') } };
+    function host() {
+      me = 0; const al = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', code = [0, 0, 0, 0].map(() => al[Math.random() * al.length | 0]).join('');
+      let shown = 0; peer = new Peer('laoxiong-' + code, PC);
+      peer.on('open', () => {
+        if (shown) return; shown = 1;   // 重连时 open 会再次触发，避免覆盖对战画面
+        LK = BASE + '?room=' + code; RC = code; setShare(code);
+        show(`<h2>房间已创建，等待好友加入…</h2><div class=hm><div class=hl style="text-align:center"><b style="font-size:clamp(30px,calc(var(--u)*11),44px);letter-spacing:8px;color:#ffb84d">${code}</b><small id=tip>点「邀请微信好友」→ 选微信 → 选好友发送；也可让好友在「输入房间号加入」填房间号</small><input id=lk value="${LK}" readonly></div><div class=hr><button onclick=share()>邀请微信好友</button><button class=s onclick=cp(this)>复制邀请链接</button><button class=s onclick=home()>取消</button></div></div>`)
+      });
+      peer.on('connection', c => { conn = c; c.on('data', onMsg); c.on('close', lost) }); peer.on('error', er);
+      // 房主切去微信发邀请时页面可能被挂起，回来后自动重连信令服务器，房间不会丢
+      peer.on('disconnected', () => { try { peer && !peer.destroyed && peer.reconnect() } catch (e) { } })
+    }
+    function join() {
+      me = 1; show('<h2>正在连接房间 ' + R + ' …</h2>'); peer = new Peer(undefined, PC);
+      peer.on('open', () => { conn = peer.connect('laoxiong-' + R); conn.on('open', () => send({ t: 'hi', c: c0 })); conn.on('data', onMsg); conn.on('close', lost) }); peer.on('error', er)
+    }
+    const BASE = location.href.split(/[?#]/)[0], TTL = document.title, MOBILE = /Android|iPhone|iPad|iPod|HarmonyOS/i.test(navigator.userAgent);
+    // 让当前页面地址 / 标题带上房间号：在微信里点 ··· 转发时，发出去的就是完整的房间链接
+    function setShare(code) {
+      try { if (!code && !location.search) return; history.replaceState(null, '', code ? BASE + '?room=' + code : BASE); document.title = code ? '老熊格斗｜房间号 ' + code + '，来一场熊熊对决！' : TTL } catch (e) { }
+    }
+    const inviteTxt = () => `老熊格斗｜房间号 ${RC}，来一场熊熊对决！点开链接直接加入：\n${LK}`;
+    async function copyText(t) {
+      try { await navigator.clipboard.writeText(t); return true } catch (e) { }
+      try { const a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;left:-999px;top:0;opacity:0;-webkit-user-select:text;user-select:text'; document.body.appendChild(a); a.focus(); a.select(); const ok = document.execCommand('copy'); a.remove(); return ok } catch (e) { return false }
+    }
+    async function cp(b) { b.textContent = (await copyText(inviteTxt())) ? '已复制 ✓' : '复制失败，请手动复制链接' }
+    function closeMask() { $('mask').style.display = 'none'; }
+    // 邀请微信好友：
+    //  · 微信内置浏览器：网页无法直接拉起分享面板，弹出「右上角 ··· → 发送给朋友」指引（页面地址已带房间号，转发即完整链接）
+    //  · 手机浏览器：调起系统分享面板，选微信 → 选好友，发送「邀请文案 + 完整链接」
+    //  · 不支持系统分享：复制邀请文案，并尝试拉起微信，粘贴给好友即可
+    async function share() {
+      if (wx) { $('mask').style.display = 'block'; return }
+      const full = inviteTxt(), tip = $('tip');
+      if (navigator.share) {
+        try { await navigator.share({ title: '老熊格斗', text: full }); if (tip) tip.textContent = '邀请已发出，等待好友加入…'; return }
+        catch (e) { if (e && e.name == 'AbortError') return }
+      }
+      const ok = await copyText(full);
+      if (tip) tip.textContent = ok ? (MOBILE ? '邀请已复制，正在打开微信，粘贴发给好友即可' : '邀请已复制，请打开微信粘贴发给好友') : '复制失败，请长按下方链接手动复制';
+      if (ok && MOBILE) setTimeout(() => { location.href = 'weixin://' }, 500)
+    }
+    function joinUI() { mode = 'on'; show(`<h2>输入房间号</h2><input id=rc maxlength=4 autocapitalize=characters placeholder="4位房间号" style="text-align:center;font-size:28px;letter-spacing:6px"><small id=tip>向房主要房间号，或直接点开他发来的链接</small><div class=bt><button onclick=jr()>下一步 · 选择角色</button><button class=s onclick=home()>返回</button></div>`); $('rc').focus() }
+    function jr() { const v = $('rc').value.trim().toUpperCase(); if (v.length != 4) return $('tip').textContent = '请输入4位房间号'; R = v; go('on') }
+    function onMsg(m) {
+      if (m.t == 'hi') { c1 = m.c; send({ t: 'go', h: c0, g: m.c }); start() }
+      else if (m.t == 'go') { c0 = m.h; c1 = m.g; start() }
+      else if (m.t == 's' && F.length) {
+        const r = F[1 - me], dm = r.hp - m.hp; if (dm > 4) hitFx(m.x, m.y + 60, dm, m.z, F[me].st == 'atk' && !!F[me].A && !!F[me].A.fin);   // 对方受击：本端同步播放命中特效（本端正在出终结技则加强）
+        Object.assign(r, { x: m.x, y: m.y, f: m.f, st: m.st, t: m.tt, hp: m.hp, en: m.en, n: m.n, a: m.a, A: gA(m.a, r.c, m.cb), vx: m.vx, z: m.z, cb: m.cb, seen: m.sn, cc: m.cc, cd: m.cd, inv: m.iv, gd: m.gd, gb: m.gb })
+      }
+      else if (m.t == 'p' && F.length) (m.l || []).forEach(addP);
+      else if (m.t == 'g' && me == 1) {
+        if (m.ph == 'intro' && ph != 'intro') { reset(); ui.style.display = 'none' }
+        ph = m.ph; tm = m.tm; wins = m.w; rd = m.rd; msg = m.msg; if (ph == 'over' && ui.style.display == 'none') showOver()
+      }
+      else if (m.t == 'rm' && me == 0) newMatch()
+    }
+    function showOver() {
+      const w = wins[0] > wins[1] ? 0 : 1;
+      show(`<h1>${C[F[w].c].n}<br>获胜！</h1><div class=bt><button onclick=again()>再战一局</button><button class=s onclick=home()>主菜单</button></div>`)
+    }
+    function again() { if (mode == 'on' && me == 1) { send({ t: 'rm' }); show('<h2>等待房主开局…</h2>') } else newMatch() }
+
+    /* ---------- 输入 ---------- */
+    onkeydown = e => { K[e.key.toLowerCase()] = 1; if (e.key.startsWith('Arrow')) e.preventDefault() }; onkeyup = e => { K[e.key.toLowerCase()] = 0 };
+    document.querySelectorAll('#pad b').forEach(b => {
+      const k = b.dataset.k, s = v => e => { e.preventDefault(); pad[k] = v; b.classList.toggle('on', v) };
+      b.addEventListener('pointerdown', s(1));['pointerup', 'pointercancel', 'pointerleave'].forEach(n => b.addEventListener(n, s(0)))
+    });
+    oncontextmenu = e => e.preventDefault();
+    if (R) show(`<h1>老熊格斗</h1><p>好友邀请你来一场熊熊对决！</p><button onclick="go('on')">接受挑战</button>`); else home();
+  </script>
+</body>
+
+</html>
