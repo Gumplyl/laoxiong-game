@@ -1,3 +1,4 @@
+<!-- 横屏锁定，隐藏ui(仅安卓) -->
 <!DOCTYPE html>
 <html lang="zh">
 
@@ -11,7 +12,10 @@
   <meta name="full-screen" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>老熊格斗1.0 - 来一场熊熊对决</title>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <title>老熊格斗4.0 - 来一场熊熊对决</title>
+  <script>/* 横屏限制仅对安卓生效：先打设备标记，供 CSS 与脚本使用 */ if (/android/i.test(navigator.userAgent)) document.documentElement.classList.add('android')</script>
   <style>
     * {
       box-sizing: border-box;
@@ -46,34 +50,83 @@
       overflow: hidden
     }
 
-    /* 竖屏的触屏设备：把整个游戏旋转 90° 铺满，等同强制横屏；一旦用户横过手机或系统锁定成功，会自动恢复 */
-    @media (orientation: portrait) and (pointer: coarse) {
-      #app {
-        inset: auto;
-        top: 0;
-        left: 100vw;
-        width: 100vh;
-        height: 100vw;
-        transform: rotate(90deg);
-        transform-origin: 0 0
-      }
-    }
-
-    @supports (width: 100dvw) {
-      @media (orientation: portrait) and (pointer: coarse) {
-        #app {
-          left: 100dvw;
-          width: 100dvh;
-          height: 100dvw
-        }
-      }
-    }
-
     canvas#c {
+      -webkit-touch-callout: none;
+      touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: none;
       display: block;
       background: #000;
       width: min(100vw, calc(100dvh*16/9));
       aspect-ratio: 16/9
+    }
+
+    /* ---------- 仅安卓横屏：安卓竖屏时全屏遮罩提示，游戏暂停 ---------- */
+    #rotate {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: #1b1210;
+      color: #ffb84d;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      text-align: center;
+      padding: 24px
+    }
+
+    #rotate .ico {
+      width: 64px;
+      height: 110px;
+      border: 4px solid #ffb84d;
+      border-radius: 10px;
+      position: relative;
+      animation: rot 1.8s ease-in-out infinite
+    }
+
+    #rotate .ico::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 6px;
+      width: 8px;
+      height: 8px;
+      margin-left: -4px;
+      border-radius: 50%;
+      background: #ffb84d
+    }
+
+    @keyframes rot {
+
+      0%,
+      25% {
+        transform: rotate(0deg)
+      }
+
+      55%,
+      100% {
+        transform: rotate(90deg)
+      }
+    }
+
+    #rotate b {
+      font-size: 30px;
+      letter-spacing: 2px
+    }
+
+    #rotate small {
+      color: #c9b3a3;
+      font-size: 15px;
+      line-height: 1.7
+    }
+
+    @media (orientation: portrait) {
+      html.android #rotate {
+        display: flex
+      }
     }
 
     #ui {
@@ -238,8 +291,11 @@
       color: #ffd54f
     }
 
+    /* ============================================================
+       横屏触屏按键区（仅横屏；竖屏由 #rotate 遮盖）
+       ============================================================ */
     #pad {
-      --bs: clamp(46px, calc(var(--u)*16), 76px);
+      --bs: clamp(54px, calc(var(--u)*18), 86px);
       display: none;
       position: absolute;
       left: 0;
@@ -247,16 +303,25 @@
       bottom: 0;
       justify-content: space-between;
       align-items: flex-end;
-      padding: 0 calc(clamp(10px, 2.5vw, 28px) + env(safe-area-inset-right)) calc(clamp(8px, calc(var(--u)*3), 20px) + env(safe-area-inset-bottom)) calc(clamp(10px, 2.5vw, 28px) + env(safe-area-inset-left));
+      padding:
+        0 calc(clamp(16px, 3vw, 34px) + env(safe-area-inset-right)) calc(clamp(16px, calc(var(--u)*4.5), 30px) + env(safe-area-inset-bottom)) calc(clamp(16px, 3vw, 34px) + env(safe-area-inset-left));
       touch-action: none;
       pointer-events: none
+    }
+
+    .dp {
+      display: grid;
+      grid-template-columns: repeat(3, var(--bs));
+      grid-template-rows: repeat(2, var(--bs));
+      gap: calc(var(--bs)*.1);
+      order: 1
     }
 
     .gp {
       display: grid;
       grid-template-columns: repeat(2, var(--bs));
       grid-template-rows: repeat(2, var(--bs));
-      gap: calc(var(--bs)*.16);
+      gap: calc(var(--bs)*.14);
       order: 2
     }
 
@@ -276,11 +341,67 @@
       grid-row: 2
     }
 
-    .dp {
-      display: grid;
-      grid-template-columns: repeat(3, var(--bs));
-      gap: calc(var(--bs)*.12);
-      order: 1
+    #pad b {
+      pointer-events: auto;
+      width: var(--bs);
+      height: var(--bs);
+      border-radius: 50%;
+      background: rgba(255, 184, 77, .3);
+      border: 2px solid rgba(255, 184, 77, .75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: calc(var(--bs)*.38);
+      font-weight: 600;
+      touch-action: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+      transition: background .08s, transform .08s
+    }
+
+    #pad b.on {
+      background: rgba(255, 184, 77, .8);
+      transform: scale(.94)
+    }
+
+    /* 绝招就绪：按键发光 */
+    #pad b.rd {
+      background: rgba(255, 213, 79, .6);
+      border-color: #fff;
+      box-shadow: 0 0 18px 5px #ffb84d
+    }
+
+    /* 赛制选择 */
+    .mode-row {
+      display: flex;
+      gap: clamp(8px, 2vw, 16px);
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: clamp(2px, calc(var(--u)*1.2), 6px) 0
+    }
+
+    .mode-btn {
+      font: inherit;
+      font-size: clamp(13px, calc(var(--u)*3.8), 15px);
+      color: #c9b3a3;
+      background: #3a2a22;
+      border: 2px solid #5a3a2a;
+      border-radius: 8px;
+      padding: clamp(5px, calc(var(--u)*1.8), 8px) clamp(12px, 2.5vw, 20px);
+      min-width: 0;
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s
+    }
+
+    .mode-btn.sel {
+      color: #ffb84d;
+      background: #5a3010;
+      border-color: #ffb84d
+    }
+
+    .mode-label {
+      font-size: clamp(12px, calc(var(--u)*3.5), 14px);
+      color: #c9b3a3;
+      margin: clamp(2px, calc(var(--u)*1.2), 6px) 0 0
     }
 
     #mask {
@@ -307,35 +428,11 @@
       line-height: 1.7;
       margin: 8px 0 12px
     }
-
-    #pad b {
-      pointer-events: auto;
-      width: var(--bs);
-      height: var(--bs);
-      border-radius: 50%;
-      background: rgba(255, 184, 77, .28);
-      border: 2px solid rgba(255, 184, 77, .7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: calc(var(--bs)*.36);
-      touch-action: none
-    }
-
-    #pad b.on {
-      background: rgba(255, 184, 77, .7)
-    }
-
-    /* 绝招就绪：按键发光 */
-    #pad b.rd {
-      background: rgba(255, 213, 79, .6);
-      border-color: #fff;
-      box-shadow: 0 0 18px 5px #ffb84d
-    }
   </style>
+  <base target="_blank">
 </head>
 
-<body>
+<body onselectstart="return false">
   <div id="app"><canvas id="c"></canvas>
     <div id="pad">
       <div class="dp"><span></span><b data-k="u">▲</b><span></span><b data-k="l">◀</b><b data-k="d">▼</b><b
@@ -349,6 +446,11 @@
       <button class="s" onclick="cp(this)">复制邀请链接</button>
     </div>
   </div>
+  <div id="rotate">
+    <div class="ico"></div>
+    <b>请横屏游玩</b>
+    <small>安卓设备仅支持横屏模式<br>请将设备转为横向</small>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     // 在线对战信令/打洞配置：默认使用 PeerJS 公共服务。若国内连接不稳，可自建 peerjs-server 并加上 host/port/path。
@@ -356,59 +458,94 @@
     const W = 800, H = 450, GY = 385, cv = document.getElementById('c'), X = cv.getContext('2d'), $ = id => document.getElementById(id), ui = $('ui');
     cv.width = W; cv.height = H;
     const C = [
-      { n: '棕熊·老铁', hp: 100, sp: 1, pw: 1, b: '#8a5a2b', v: '#d2a56c', e: '#8a5a2b', a: '#e33', d: '均衡型', s: '#ff8a30' },
-      { n: '北极熊·冰霸', hp: 116, sp: .88, pw: 1, b: '#eef3f8', v: '#fff', e: '#cfdbe6', a: '#3aa0ff', d: '坚韧型', s: '#7fd4ff' },
-      { n: '熊猫·太极', hp: 98, sp: 1.08, pw: 1, b: '#fff', v: '#fff', e: '#111', l: '#222', a: '#2c2', d: '灵活型', s: '#6fe36f' },
-      { n: '黑熊·疾风', hp: 95, sp: 1.2, pw: .98, b: '#2b2b33', v: '#d9b25f', e: '#2b2b33', a: '#ffd000', d: '速度型', s: '#ffe04a' },
-      { n: '大胡子·岩锤', hp: 104, sp: .85, pw: 1.16, b: '#703820', v: '#c48654', e: '#4a2212', a: '#ff5722', d: '力量型', s: '#ff8a50' },
-      { n: '小壮壮·蹦蹦', hp: 92, sp: 1.25, pw: .96, b: '#c99866', v: '#f0d4a8', e: '#8a5e33', a: '#ffd54f', d: '敏捷型', s: '#fff176' }];
+      { n: '棕熊·老铁', hp: 104, sp: 1, pw: 1, b: '#8a5a2b', v: '#d2a56c', e: '#8a5a2b', a: '#e33', d: '均衡型', s: '#ff8a30' },
+      { n: '北极熊·冰霸', hp: 112, sp: .9, pw: 1, b: '#eef3f8', v: '#fff', e: '#cfdbe6', a: '#3aa0ff', d: '坚韧型', s: '#7fd4ff' },
+      { n: '熊猫·太极', hp: 100, sp: 1.06, pw: 1, b: '#fff', v: '#fff', e: '#111', l: '#222', a: '#2c2', d: '灵活型', s: '#6fe36f' },
+      { n: '黑熊·疾风', hp: 96, sp: 1.15, pw: .98, b: '#2b2b33', v: '#d9b25f', e: '#2b2b33', a: '#ffd000', d: '速度型', s: '#ffe04a' },
+      { n: '大胡子·岩锤', hp: 106, sp: .88, pw: 1.08, b: '#703820', v: '#c48654', e: '#4a2212', a: '#ff5722', d: '力量型', s: '#ff8a50' },
+      { n: '小壮壮·蹦蹦', hp: 94, sp: 1.2, pw: .97, b: '#c99866', v: '#f0d4a8', e: '#8a5e33', a: '#ffd54f', d: '敏捷型', s: '#fff176' }];
     /* 每只熊的专属绝招：n 名称 / c 特效主色 / rg AI 出招距离 / A 招式参数（d 总帧数 rf 出手帧 s 发射类 a 判定窗 dm 伤害 r 范围 kb 击退 z 状态 st 硬直） */
     const SP = [
       { n: '烈焰熊掌', c: '#ff8a30', rg: [150, 500], A: { d: 38, rf: 12, s: 1 } },
       { n: '极寒冰刺', c: '#7fd4ff', rg: [110, 380], A: { d: 44, rf: 14, s: 1 } },
       { n: '太极回旋', c: '#6fe36f', rg: [100, 420], A: { d: 42, rf: 12, s: 1 } },
-      { n: '疾风穿云斩', c: '#ffe04a', rg: [90, 330], A: { d: 36, rf: 6, a: [6, 20], dm: 24, r: 80, kb: 10, z: 'e', st: 34 } },
+      { n: '疾风穿云斩', c: '#ffe04a', rg: [90, 330], A: { d: 40, rf: 9, a: [9, 23], dm: 20, r: 80, kb: 8, z: 'e', st: 28 } },
       { n: '碎岩震地', c: '#e0b070', rg: [50, 250], A: { d: 50, rf: 18, s: 1 } },
-      { n: '熊掌流星雨', c: '#ff8fe0', rg: [0, 800], A: { d: 48, rf: 14, s: 1 } }];
+      { n: '熊掌流星雨', c: '#ff8fe0', rg: [100, 700], A: { d: 48, rf: 14, s: 1 } }];
     const SD = ['弹道火球·命中燃烧', '地面冰刺·冻结', '回旋飞盘·去回各一击', '穿身突袭·雷击麻痹', '地裂冲击波·眩晕', '天降熊掌·多段连击'];
     const ZC = { b: '#ff8a30', i: '#bfeaff', d: '#d9a066', e: '#ffe04a' };
     /* 普通攻击连段表：p 拳 / k 腿，下标 = 连段序号（0 第一段、1 第二段、2 第三段·重击终结）
-       d 总帧数 a 判定窗 dm 伤害 r 范围 kb 击退 st 受击硬直 cw 命中后可取消进入下一段的最早帧 mv 前冲速度 fin 终结技 */
+       d 总帧数 a 判定窗 dm 伤害 r 范围 kb 击退 st 受击硬直 cw 命中后可取消进入下一段的最早帧 mv 前冲速度 fin 终结技
+       设计定位：拳 = 同距离出手快 / 格挡时 4 倍扣盾（破盾）；腿 = 同距离伤害高 / 终结段略长 / 收招慢（收割） */
     const CB = {
-      p: [{ d: 16, a: [4, 7], dm: 4, r: 58, kb: 2, st: 20, cw: 8 },
-      { d: 18, a: [4, 8], dm: 4, r: 62, kb: 2, st: 20, cw: 9, mv: 3.5 },
-      { d: 20, a: [5, 9], dm: 5, r: 64, kb: 3, st: 22, cw: 10, mv: 3.5 },
-      { d: 36, a: [7, 12], dm: 8, r: 72, kb: 9, st: 26, fin: 1, mv: 4 }],
-      k: [{ d: 26, a: [8, 12], dm: 6, r: 80, kb: 3, st: 24, cw: 14 },
-      { d: 28, a: [8, 12], dm: 6, r: 84, kb: 3, st: 26, cw: 15, mv: 3.5 },
-      { d: 30, a: [9, 13], dm: 7, r: 86, kb: 3, st: 30, cw: 16, mv: 3.5 },
-      { d: 46, a: [11, 17], dm: 11, r: 92, kb: 12, st: 30, fin: 1, mv: 4 }]
+      p: [{ d: 16, a: [4, 7], dm: 4, r: 94, kb: 2, st: 22, cw: 8 },
+      { d: 18, a: [4, 8], dm: 4, r: 96, kb: 2, st: 22, cw: 9, mv: 3.5 },
+      { d: 20, a: [5, 9], dm: 5, r: 98, kb: 3, st: 24, cw: 10, mv: 3.5 },
+      { d: 36, a: [7, 12], dm: 8, r: 104, kb: 9, st: 28, fin: 1, mv: 4 }],
+      k: [{ d: 26, a: [8, 12], dm: 6, r: 94, kb: 3, st: 24, cw: 16 },
+      { d: 28, a: [8, 12], dm: 6, r: 98, kb: 3, st: 26, cw: 17, mv: 3.5 },
+      { d: 30, a: [9, 13], dm: 7, r: 100, kb: 3, st: 30, cw: 18, mv: 3.5 },
+      { d: 46, a: [11, 17], dm: 11, r: 108, kb: 12, st: 30, fin: 1, mv: 4 }]
     };
     // 出招速度由移速推导：快熊出招快、慢熊慢（只缩放普通攻击，绝招不缩放）
     const AS = C.map(c => 1 + (c.sp - 1) * .5),
       CBS = C.map((c, i) => { const r = {}, s = 1 / AS[i], R = v => Math.max(1, Math.round(v * s)); for (const k in CB) r[k] = CB[k].map(m => { const a0 = R(m.a[0]), a1 = Math.max(a0, R(m.a[1])), o = { ...m, d: R(m.d), a: [a0, a1] }; if (m.cw) o.cw = Math.max(a1 + 1, R(m.cw)); o.d = Math.max(o.d, (o.cw || a1) + 2); return o }); return r });
     const gA = (a, c, cb) => a == 's' ? SP[c].A : ((CBS[c] || {})[a] || [])[cb | 0];
     const KM = [{ l: 'a', r: 'd', u: 'w', d: 's', a: 'j', b: 'k', c: 'l' }, { l: 'arrowleft', r: 'arrowright', u: 'arrowup', d: 'arrowdown', a: '1', b: '2', c: '3' }];
-    let mode, stage = 0, c0 = 0, c1 = 1, F = [], P = [], fx = [], pa = [], shk = 0, ph = '', pt = 0, tm = 0, wins = [0, 0], rd = 1, msg = '', me = 0, LK = '', RC = '', conn, peer, K = {}, pad = {}, fr = 0, fl = 0, R = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
+    // matchBo: 1=一局决, 3=三局两胜, 5=五局三胜; winsNeeded = Math.ceil(matchBo/2)
+    let hs = 0, dn = [], mode, stage = 0, c0 = 0, c1 = 1, F = [], P = [], fx = [], pa = [], shk = 0, zm = 0, sl = 0, AC = null, ph = '', pt = 0, tm = 0, wins = [0, 0], rd = 1, msg = '', me = 0, LK = '', RC = '', conn, peer, K = {}, pad = {}, fr = 0, fl = 0, R = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
+    let matchBo = 3; // 默认三局两胜
+    let rsel = 0, rpk = { m: null, o: null };   // 联机战后重选：rsel=正在重选界面；rpk.m=我选的熊，rpk.o=对方选的熊
+    const winsNeeded = () => Math.ceil(matchBo / 2);
     const wx = /MicroMessenger/i.test(navigator.userAgent), padC = document.querySelector('#pad [data-k=c]');
     const send = m => { try { conn && conn.open && conn.send(m) } catch (e) { } };
     const mine = f => mode != 'on' || f.i == me, auth = () => mode != 'on' || me == 0;
     /* cb 连段序号 / bk bt 连段输入缓冲 / pk 上一帧按键 / cc 当前被连击数 / cd 连击显示计时 / inv 连击保护（无敌）帧 */
-    const mk = (i, c) => ({ i, c, x: i ? 620 : 180, y: 0, vx: 0, vy: 0, f: i ? -1 : 1, hp: C[c].hp, en: 0, st: 'idle', t: 0, n: 0, seen: 0, a: '', A: null, stun: 0, z: 0, gh: 0, cb: 0, bk: '', bt: 0, pk: null, cc: 0, cd: 0, inv: 0, gd: 100, gb: 0 });
-    function reset() { F = [mk(0, c0), mk(1, c1)]; P = []; fx = []; pa = []; shk = 0; ph = 'intro'; pt = 100; tm = 3600; msg = '' }
-    const sendG = () => send({ t: 'g', ph, tm, w: wins, rd, msg });
+    const mk = (i, c) => ({ i, c, x: i ? 620 : 180, y: 0, vx: 0, vy: 0, f: i ? -1 : 1, hp: C[c].hp, en: 0, st: 'idle', t: 0, n: 0, seen: 0, a: '', A: null, stun: 0, z: 0, gh: 0, sq: 0, cb: 0, bk: '', bt: 0, pk: null, cc: 0, cd: 0, inv: 0, gd: 100, gb: 0, bn: 0, dn: 0 });
+    function reset() { F = [mk(0, c0), mk(1, c1)]; P = []; fx = []; pa = []; dn = []; hs = 0; shk = 0; zm = 0; ph = 'intro'; pt = 100; tm = 3600; msg = ''; rsel = 0; rpk = { m: null, o: null } }
+    const sendG = () => send({ t: 'g', ph, tm, w: wins, rd, msg, bo: matchBo });
     function newMatch() { wins = [0, 0]; rd = 1; reset(); ui.style.display = 'none'; sendG() }
+    function newMatchBO(bo) { matchBo = bo; wins = [0, 0]; rd = 1; reset(); ui.style.display = 'none'; sendG() }
 
-    /* ---------- 粒子 / 屏幕震动 ---------- */
+    /* ---------- 粒子 / 屏幕震动 / 合成音效 ---------- */
     const boom = (x, y, c, n = 10, v = 5) => { if (pa.length > 280) return; for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, s = Math.random() * v + 1; pa.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s + 1, l: 18 + Math.random() * 14, m: 32, c, r: 2 + Math.random() * 3 }) } };
+    const pop = (x, y, v, c) => { if (dn.length < 12) dn.push({ x, y, v, c, t: 0 }) };   // 伤害飘字
     const tr = (x, y, c, r) => { if (pa.length < 300) pa.push({ x, y, vx: (Math.random() - .5) * 1.5, vy: Math.random() * 1.5, l: 14, m: 14, c, r }) };
-    // fin：重击终结 → 更大的震动 + 白闪 + 冲击火花
-    const hitFx = (x, y, dm, z, fin) => { boom(x, y, ZC[z] || '#fff', Math.min(26, dm * 1.3 | 0), 5); shk = Math.max(shk, dm >= 15 ? 10 : dm >= 9 ? 4 : 0); if (fin) { shk = Math.max(shk, 11); fl = 6; boom(x, y, '#fff', 14, 7) } };
+
+    // 合成音效初始化
+    const au = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); AC.resume() } catch (e) { } };
+    addEventListener('pointerdown', au); addEventListener('keydown', au);
+    // 合成音效:振荡器(音调下滑=“砰”) + 衰减噪声(质感)。p拳 k腿 f终结 b格挡 g破防 s绝招 ko击倒
+    const sfx = (t, v = 1) => {
+      try {
+        au(); const n = AC.currentTime, o = AC.createOscillator(), g = AC.createGain(),
+          P = { p: [190, 60, .09, 'square'], k: [150, 45, .13, 'sawtooth'], f: [120, 30, .3, 'sawtooth'], b: [460, 300, .07, 'triangle'], g: [900, 120, .25, 'square'], s: [260, 900, .25, 'sawtooth'], ko: [200, 25, .6, 'sawtooth'] }[t];
+        o.type = P[3]; o.frequency.setValueAtTime(P[0], n); o.frequency.exponentialRampToValueAtTime(P[1], n + P[2]);
+        g.gain.setValueAtTime(.12 * v, n); g.gain.exponentialRampToValueAtTime(.001, n + P[2]);
+        o.connect(g); g.connect(AC.destination); o.start(n); o.stop(n + P[2]);
+        if (t != 's') {
+          const L = AC.sampleRate * P[2] | 0, bf = AC.createBuffer(1, L, AC.sampleRate), d = bf.getChannelData(0);
+          for (let i = 0; i < L; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / L);
+          const s = AC.createBufferSource(), h = AC.createGain(); h.gain.value = .15 * v; s.buffer = bf; s.connect(h); h.connect(AC.destination); s.start(n)
+        }
+      } catch (e) { }
+    };
+    // dir=攻击方向。粒子顺着出拳方向飞溅 + 星芒火花 + 按伤害分级的音效/震动/镜头拉近
+    const hitFx = (x, y, dm, z, fin, dir = 1) => {
+      boom(x, y, ZC[z] || '#fff', Math.min(26, dm * 1.3 | 0), 5);
+      for (let i = 0; i < Math.min(12, dm | 0); i++) if (pa.length < 300) pa.push({ x, y, vx: dir * (2 + Math.random() * 8), vy: Math.random() * 4 - 1, l: 12 + Math.random() * 12, m: 24, c: Math.random() < .5 ? '#fff' : '#ffe2b0', r: 1.5 + Math.random() * 2 });
+      fx.push({ x, y, t: 0, k: 's', dm, fin, dir, z, sd: Math.random() * 6 });
+      shk = Math.max(shk, dm >= 15 ? 10 : dm >= 9 ? 5 : dm >= 4 ? 2 : 0);
+      zm = Math.max(zm, fin ? .07 : dm >= 9 ? .03 : 0);
+      sfx(fin ? 'f' : dm >= 9 ? 'k' : 'p', fin ? 1.3 : 1);
+      if (fin) { shk = Math.max(shk, 11); fl = 6; boom(x, y, '#fff', 14, 7) }
+    };
 
     /* ---------- 战斗逻辑 ---------- */
     function upd(f, k, o) {
       const ch = C[f.c]; f.t++; if (f.en < 100) f.en += .05;
-      if (f.cd > 0) f.cd--; if (f.inv > 0) f.inv--;
+      if (f.cd > 0) f.cd--; if (f.sq > 0) f.sq = Math.max(0, f.sq - .12); if (f.inv > 0) f.inv--;
+      if (f.bn > 0) { f.bn--; if (ph == 'fight' && f.bn % 30 == 0) f.hp -= 1 }
       // 防御槽：破防结束后恢复到 45；非防御、非受击时缓慢回复
       if (f.gb > 0 && --f.gb == 0) f.gd = Math.max(f.gd, 45);
       if (f.st != 'block' && f.st != 'hit' && f.gd < 100) f.gd = Math.min(100, f.gd + .25);
@@ -417,6 +554,8 @@
       if (ea || eb) { f.bk = ea ? 'a' : 'b'; f.bt = 10 } else if (f.bt > 0 && --f.bt == 0) f.bk = '';
       if (f.hp <= 0) { f.st = 'ko'; f.z = 0 }
       if (f.st == 'hit') { if (f.t > f.stun) { f.st = 'idle'; f.z = 0 } }
+      else if (f.st == 'down') { if (f.t >= f.dn) { f.st = 'getup'; f.t = 0; f.z = 0 } }   // 倒地结束→起身
+      else if (f.st == 'getup') { if (f.t >= 18) { f.st = 'idle'; f.t = 0 } }              // 起身回正
       else if (f.st == 'atk') {
         if (f.t >= f.A.d) f.st = 'idle';
         else if (f.A.s && f.t == f.A.rf) rel(f);
@@ -428,19 +567,26 @@
       if (['idle', 'walk', 'jump', 'block'].includes(f.st)) {
         const g = f.y == 0, d = (k.r ? 1 : 0) - (k.l ? 1 : 0); f.f = o.x > f.x ? 1 : -1;
         const a = k.a ? 'p' : k.b ? 'k' : k.c && f.en >= 50 ? 's' : '';
-        if (a) { f.st = 'atk'; f.t = 0; f.a = a; f.A = gA(a, f.c, 0); f.cb = 0; f.bk = ''; f.bt = 0; f.n++; if (a == 's') f.en -= 50; if (g) f.vx = 0 }
+        if (a) { f.st = 'atk'; f.t = 0; f.a = a; f.A = gA(a, f.c, 0); f.cb = 0; f.bk = ''; f.bt = 0; f.n++; if (a == 's') { f.en -= 50; sfx('s') } if (g) f.vx = 0 }
         else {
           f.st = !g ? 'jump' : k.d ? 'block' : d ? 'walk' : 'idle';
-          if (g) { f.vx = f.st == 'block' ? 0 : d * 3.3 * ch.sp; if (k.u && !k.d) f.vy = 13.5 * (1 + (ch.sp - 1) * .25) }
+          if (g) {
+            const tv = f.st == 'block' ? 0 : d * 3.3 * ch.sp; f.vx += (tv - f.vx) * (tv ? .5 : .6); if (Math.abs(f.vx) < .1) f.vx = 0;   // 起步/刹车有短暂加减速
+            if (k.u && !k.d) { f.vy = 13.5 * (1 + (ch.sp - 1) * .25); f.sq = 1; boom(f.x, 2, '#c9a27a', 5, 2) }                         // 起跳尘土 + 拉伸
+            if (d && f.t % 9 == 0) tr(f.x, 3, '#c9a27a', 3)                                                                              // 走路扬尘
+          } else {
+            if (d) f.vx += (d * 2.6 * ch.sp - f.vx) * .08;                 // 空中可微调方向
+            if (!k.u && f.vy > 6) f.vy *= .88                              // 松开跳键=小跳,按住=大跳
+          }
         }
       }
       f.vy -= .65; f.y += f.vy;
-      if (f.y <= 0) { f.y = 0; f.vy = 0; if (f.st == 'atk') f.vx = 0 }
+      if (f.y <= 0) { if (f.vy < -6) { f.sq = 1; boom(f.x, 2, '#c9a27a', 6, 3) } f.y = 0; f.vy = 0; if (f.st == 'atk') f.vx = 0 }
       // 连段中的第 2、3、4 段带一小步前冲，保证连得上
       if (f.st == 'atk' && f.a != 's' && f.y == 0 && f.A.mv && f.t < 5) f.vx = f.f * f.A.mv;
       // 黑熊绝招：出手后向前高速突进，穿过对手
-      if (f.st == 'atk' && f.a == 's' && f.c == 3 && f.t >= 6 && f.t < 20) f.vx = f.f * (24 - (f.t - 6) * .9);
-      if (f.st == 'hit' || f.st == 'ko') f.vx *= .92;
+      if (f.st == 'atk' && f.a == 's' && f.c == 3 && f.t >= f.A.rf && f.t < f.A.rf + 14) f.vx = f.f * (24 - (f.t - f.A.rf) * .9);
+      if (f.st == 'hit' || f.st == 'ko' || f.st == 'down') f.vx *= .9;
       f.x = Math.max(30, Math.min(770, f.x + f.vx));
       if (f.y < 30 && o.y < 30 && Math.abs(f.x - o.x) < 34) f.x += (f.x < o.x ? -1 : 1) * 1.5;
     }
@@ -448,18 +594,24 @@
       const a = A.A;
       if (A.st == 'atk' && a && a.dm && A.t >= a.a[0] && A.t <= a.a[1] && A.n != D.seen && D.st != 'ko' && !(D.inv > 0)) {
         const dx = (D.x - A.x) * A.f;
-        if (dx > -10 && dx < a.r && Math.abs(D.y - A.y) < 70) { D.seen = A.n; hurt(D, a.dm * C[A.c].pw, a.kb, A.f, a.z, a.st, true, a.fin) }
+        if (dx > -10 && dx < a.r && Math.abs(D.y - A.y) < 70) {
+          D.seen = A.n;
+          // 把招式类型（p 拳 / k 腿 / s 绝招）一并传入，供 hurt() 区分格挡扣盾倍率
+          hurt(D, a.dm * C[A.c].pw, a.kb, A.f, a.z, a.st, true, a.fin, A.a);
+          // 墙角挤压：对手被逼到墙角时，进攻方被反推，避免贴脸重叠
+          if (mode != 'on' && (D.x < 45 || D.x > 755)) A.x -= A.f * a.kb * .6;
+        }
       }
     }
-    // m：普通攻击（参与连击伤害衰减 / 连击保护）；fin：重击终结
-    function hurt(D, dm, kb, f, z, stn, m, fin) {
+    // m：普通攻击（参与连击伤害衰减 / 连击保护）；fin：重击终结；ch：招式类型（'p' 拳 / 'k' 腿 / 's' 绝招，发射物为 undefined）
+    function hurt(D, dm, kb, f, z, stn, m, fin, ch) {
       if (D.inv > 0) return;                                  // 连击保护期：免疫一切伤害
-      const b = D.st == 'block' && D.f == -f; fx.push({ x: D.x, y: D.y + 60, t: 0, b });
+      const b = D.st == 'block' && D.f == -f; fx.push({ x: D.x, y: D.y + 60, t: 0, b, dir: D.f });
       if (b) {
-        D.hp -= dm * .15; D.vx = f * (fin ? 6 : 2.5); boom(D.x, D.y + 60, '#8cf', fin ? 9 : 4, 3);
-        // 防御槽：每次格挡按伤害消耗（重击终结额外 +8），见底即破防：长硬直 + 眩晕
-        D.gd -= dm * 2.2 + (fin ? 8 : 0);
-        if (D.gd <= 0) { D.gd = 0; D.st = 'hit'; D.t = 0; D.stun = 48; D.gb = 48; D.z = 'd'; D.vx = f * 3; D.cc = 0; D.cd = 0; shk = Math.max(shk, 8); fl = 4; boom(D.x, D.y + 60, '#fff', 16, 6) }
+        D.hp -= dm * .15; sfx('b'); D.vx = f * (fin ? 6 : 2.5); pop(D.x, D.y + 125, '格挡', '#8cf'); if (mode != 'on') hs = Math.max(hs, fin ? 4 : 2); boom(D.x, D.y + 60, '#8cf', fin ? 9 : 4, 3);
+        // 防御槽：每次格挡按伤害消耗（重击终结额外 +8）。拳（ch=='p'）扣盾倍率为腿的约 1.8 倍 —— 拳是破盾手段
+        D.gd -= dm * (ch == 'p' ? 4 : 2.2) + (fin ? 8 : 0);
+        if (D.gd <= 0) { sfx('g'); zm = .05; D.gd = 0; D.st = 'hit'; D.t = 0; D.stun = 48; D.gb = 48; D.z = 'd'; D.vx = f * 3; D.cc = 0; D.cd = 0; shk = Math.max(shk, 8); fl = 4; boom(D.x, D.y + 60, '#fff', 16, 6) }
         return
       }
       // 绝招出手前被打断：返还一半能量
@@ -467,10 +619,25 @@
       // 连击统计：在受击硬直中又被打中才算连击；普通攻击连击伤害逐段衰减（每段 -12%，最低 50%）
       D.cc = D.st == 'hit' ? D.cc + 1 : 1; D.cd = 55;
       if (m) dm *= Math.max(.5, 1 - (D.cc - 1) * .12);
-      D.hp -= dm; D.st = 'hit'; D.t = 0; D.stun = stn || (kb > 6 ? 20 : 13); D.z = z || 0; D.vx = f * kb * .7; if (kb > 6 && D.y == 0) D.vy = 5; D.en = Math.min(100, D.en + dm);
+      D.hp -= dm; D.en = Math.min(100, D.en + dm);
+      const kd = fin || kb >= 7;
+      if (kd) {
+        // 击倒：重击终结或高击退攻击 → 对手倒地躺平。倒地全程无敌，起身后还有短暂保护
+        D.st = 'down'; D.t = 0; D.dn = 40 + Math.min(24, kb * 2); D.z = z || 0;
+        D.vx = f * kb * 1.1; if (D.y == 0) D.vy = 7;
+        D.inv = D.dn + 20; D.cc = 0; D.cd = 0;   // 倒地立刻终止连击
+        boom(D.x, 6, '#c9a27a', 8, 4); shk = Math.max(shk, 8);
+        pop(D.x, D.y + 125, '击倒！', '#ffd54f')
+      } else {
+        D.st = 'hit'; D.t = 0; D.stun = stn || (kb > 6 ? 20 : 13); D.z = z || 0; D.vx = f * kb * .7; if (kb > 6 && D.y == 0) D.vy = 5
+      }
       // 防无限连：吃满 4 段普通攻击，或被重击终结后，对手获得硬直 + 24 帧的保护期，可以起身反击
       if (m && (fin || D.cc >= 4)) D.inv = D.stun + 24;
-      hitFx(D.x, D.y + 60, dm, z, fin)
+      if (z == 'b') D.bn = 120; hitFx(D.x, D.y + 60, dm, z, fin, f);
+      if (D.hp <= 0) { sfx('ko'); zm = .09; shk = Math.max(shk, 14); fl = 8; if (mode != 'on') hs = Math.max(hs, 16) }
+      pop(D.x, D.y + 125, Math.round(dm), fin ? '#ffd54f' : '#fff');
+      // 命中停顿：打击感来源。联机时双方帧不同步，故只在离线模式启用
+      if (mode != 'on') hs = Math.max(hs, fin ? 9 : dm >= 9 ? 6 : dm >= 4 ? 3 : 2)
     }
 
     /* ---------- 绝招：发射物 / 场地效果 ---------- */
@@ -483,11 +650,11 @@
     }
     function rel(f) {
       const c = f.c, o = F[1 - f.i], d = f.f, b = { o: f.i, c, dr: d, ag: 0, dl: 0, hc: 0 }, L = [];
-      if (c == 0) L.push({ ...b, k: 'f', x: f.x + d * 50, y: f.y + 55, vx: d * 8.5, dm: 20, kb: 9, z: 'b', st: 28 });
-      else if (c == 1) for (let i = 0; i < 5; i++) L.push({ ...b, k: 'i', x: f.x + d * (80 + i * 58), y: 0, vx: 0, dl: i * 5, dm: 18, kb: 0, z: 'i', st: 50 });
-      else if (c == 2) L.push({ ...b, k: 'y', x: f.x + d * 40, y: f.y + 58, vx: d * 9, dm: 11, kb: 5 });
-      else if (c == 4) for (const q of [-1, 1]) L.push({ ...b, k: 'q', dr: q, x: f.x + q * 30, y: 0, vx: q * 6.5, dm: 18, kb: 12, z: 'd', st: 42 });
-      else if (c == 5) for (let i = 0; i < 6; i++) { const ox = [0, -12, 12, -6, 6, 0][i]; L.push({ ...b, k: 'r', x: o.x + ox, ox, y: 430, vx: 0, dl: i * 5, dm: 4, kb: 2 }) }
+      if (c == 0) L.push({ ...b, k: 'f', x: f.x + d * 50, y: f.y + 55, vx: d * 8.5, dm: 15, kb: 9, z: 'b', st: 28 });
+      else if (c == 1) for (let i = 0; i < 5; i++) L.push({ ...b, k: 'i', x: f.x + d * (80 + i * 58), y: 0, vx: 0, dl: i * 5, dm: 14, kb: 0, z: 'i', st: 44 });
+      else if (c == 2) L.push({ ...b, k: 'y', x: f.x + d * 40, y: f.y + 58, vx: d * 9, dm: 12, kb: 5 });
+      else if (c == 4) for (const q of [-1, 1]) L.push({ ...b, k: 'q', dr: q, x: f.x + q * 30, y: 0, vx: q * 6.5, dm: 17, kb: 12, z: 'd', st: 38 });
+      else if (c == 5) for (let i = 0; i < 6; i++) { const ox = [0, -12, 12, -6, 6, 0][i]; L.push({ ...b, k: 'r', x: o.x + ox, ox, y: 430, vx: 0, dl: i * 5, dm: 3.5, kb: 2 }) }
       if (L.length) { send({ t: 'p', l: L.map(q => ({ ...q })) }); L.forEach(addP) }
     }
     function pu(p, fight) {
@@ -503,22 +670,36 @@
         tr(p.x, p.y + (Math.random() - .5) * 14, '#6fe36f', 3); ov = dx < 34 && yo; hc = 26
       }
       else if (k == 'q') { p.x += p.vx; if (p.ag % 3 == 0) tr(p.x, 4, '#a07a50', 5); ov = dx < 30 && d.y < 45; gone = p.ag > 48 || p.x < 5 || p.x > W - 5 }
-      else if (k == 'r') { p.y -= 13; p.x += Math.max(-3, Math.min(3, d.x + p.ox - p.x)); tr(p.x, p.y + 30, '#ff8fe0', 3); ov = Math.abs(p.x - d.x) < 32 && yo; if (ov) gone = 1; else if (p.y <= 0) { boom(p.x, 4, '#ff8fe0', 7, 3); gone = 1 } }
+      else if (k == 'r') { p.y -= 13; if (p.y > 270) p.x += Math.max(-3, Math.min(3, d.x + p.ox - p.x)); tr(p.x, p.y + 30, '#ff8fe0', 3); ov = Math.abs(p.x - d.x) < 32 && yo; if (ov) gone = 1; else if (p.y <= 0) { boom(p.x, 4, '#ff8fe0', 7, 3); gone = 1 } }
       if (ov && p.hc <= 0) {
-        if (mine(d) && fight) hurt(d, p.dm * C[p.c].pw, p.kb, p.dr, p.z, p.st);
+        if (mine(d) && fight && d.st != 'ko') hurt(d, p.dm * C[p.c].pw, p.kb, p.dr, p.z, p.st);
         p.hc = hc; if (k == 'f') boom(p.x, p.y, '#ffb84d', 16, 6)
       }
       return !gone
     }
     function ai(f, o) {
-      const d = o.x - f.x, ad = Math.abs(d), k = {}, to = d > 0 ? 'r' : 'l', aw = d > 0 ? 'l' : 'r', rg = SP[f.c].rg;
-      // AI 连击：普通攻击命中后，有一定概率在取消窗口内补一下（只按一帧，模拟"重新按键"）
-      // 先滚动决策再判断出招中：否则出招期间不倒计时，会反复空挥同一招
-      if (!f.at || --f.at <= 0) { f.at = 10 + Math.random() * 20; f.am = Math.random() } const m = f.am;
+      const d = o.x - f.x, ad = Math.abs(d), k = {}, to = d > 0 ? 'r' : 'l', rg = SP[f.c].rg, g = f.y == 0, oa = o.st == 'atk' && o.A && o.A.a ? o.A : null;
+      // 决策每 8~24 帧重新滚动：am 行为随机数 / ar 反应随机数（<.72 才会做出防守反应，模拟人类的反应不完美）
+      if (!f.at || --f.at <= 0) { f.at = 8 + Math.random() * 16; f.am = Math.random(); f.ar = Math.random() } const m = f.am, re = f.ar < .72;
+      // 连击：普通攻击命中后，有一定概率在取消窗口内补一下（只按一帧，模拟"重新按键"）
       if (f.st == 'atk' && f.a != 's') { if (f.cb < 3 && f.t == f.A.cw && o.seen === f.n && Math.random() < .7) k[Math.random() < .5 ? 'a' : 'b'] = 1; return k }
+      if (f.st == 'atk') return k;
+      // 对手倒地/起身期间无敌：不浪费招式，走过去等其起身
+      if (o.st == 'down' || o.st == 'getup') { if (ad > 90) k[to] = 1; else if (f.gd < 40) k.d = 1; return k }
+      // 1. 应对来袭发射物：地裂波跳过去，其余格挡
+      const th = P.find(p => p.o != f.i && p.dl <= 0 && p.k != 'r' && Math.abs(p.x - f.x) < 130 && (p.k == 'i' || (f.x - p.x) * p.dr > 0));
+      if (th && g && re) { if (th.k == 'q' && Math.abs(th.x - f.x) < 100) k.u = 1; else if (f.gd > 15) k.d = 1; return k }
+      // 2. 对手近战出招（含前摇）且在其攻击范围内：举盾
+      if (oa && g && re && o.t <= oa.a[1] + 2 && ad < oa.r + 30 && f.gd > 15) { k.d = 1; return k }
+      // 3. 惩罚破绽：对手出招收招阶段，拳腿同距离（94 起），够得着就反击
+      if (oa && re && o.t > oa.a[1] + 1 && ad < oa.r + 40) { if (ad <= 90) k.a = 1; else if (ad <= 96) k.b = 1; else k[to] = 1; return k }
+      // 4. 对空：对手跳在空中逼近时直接打下来
+      if (o.y > 30 && ad < 96 && g && re) { k.a = 1; return k }
+      // 5. 绝招：在招式最佳距离内
       if (f.en >= 50 && ad >= rg[0] && ad <= rg[1] && m > .9) { k.c = 1; return k }
-      if (ad > 76) { if (m < .85) k[to] = 1; if (m > .97) k.u = 1 }   // 间距按招式判定范围：拳 58、腿 80 起
-      else if (ad > 52) { if (m < .3) k[to] = 1; else if (m < .75) k.b = 1; else if (m < .85) k.d = 1 }
+      // 6. 日常走位：拳腿首段同为 94，进到 96 内就能出拳
+      if (ad > 96) { if (m < .85) k[to] = 1; if (m > .97) k.u = 1 }
+      else if (ad > 76) { if (m < .3) k[to] = 1; else if (m < .6) k.b = 1; else if (m < .72) k.a = 1; else if (m < .85) k.d = 1 }
       else { if (m < .45) k.a = 1; else if (m < .7) k.b = 1; else if (m < .85) k.d = 1 }
       return k
     }
@@ -529,23 +710,24 @@
       for (const f of F) {
         const o = F[1 - f.i];
         // 黑熊突进残影轨迹（两端各自记录，纯视觉）
-        if (f.st == 'atk' && f.a == 's' && f.c == 3 && f.t >= 6) { f.gh = f.gh || []; f.gh.push(f.x); if (f.gh.length > 6) f.gh.shift() } else f.gh = 0;
+        if (f.st == 'atk' && f.a == 's' && f.c == 3 && f.t >= f.A.rf) { f.gh = f.gh || []; f.gh.push(f.x); if (f.gh.length > 6) f.gh.shift() } else f.gh = 0;
         if (!mine(f)) { f.t++; continue }
         upd(f, fight ? (f.i == 1 && mode == 'ai' ? ai(f, o) : inp(f.i)) : {}, o);
         if (fight) strike(f, o)
       }
       P = P.filter(p => pu(p, fight));
-      pa = pa.filter(q => { q.x += q.vx; q.y += q.vy; q.vy -= .25; return --q.l > 0 }); if (shk > 0) shk--; if (fl > 0) fl--;
-      fx.forEach(e => e.t++); fx = fx.filter(e => e.t < 12);
+      pa = pa.filter(q => { q.x += q.vx; q.y += q.vy; q.vy -= .25; return --q.l > 0 });
+      if (shk > 0) shk--; if (fl > 0) fl--; zm *= .86;
+      fx.forEach(e => e.t++); fx = fx.filter(e => e.t < 12); dn.forEach(e => e.t++); dn = dn.filter(e => e.t < 40);
       if (mode == 'on') {
-        if (fr % 2 == 0) { const f = F[me]; send({ t: 's', x: f.x, y: f.y, f: f.f, st: f.st, tt: f.t, hp: f.hp, en: f.en, n: f.n, a: f.a, vx: f.vx, z: f.z, cb: f.cb, sn: f.seen, cc: f.cc, cd: f.cd, iv: f.inv, gd: f.gd, gb: f.gb }) }
+        if (fr % 2 == 0) { const f = F[me]; send({ t: 's', x: f.x, y: f.y, f: f.f, st: f.st, tt: f.t, hp: f.hp, en: f.en, n: f.n, a: f.a, vx: f.vx, z: f.z, cb: f.cb, sn: f.seen, cc: f.cc, cd: f.cd, iv: f.inv, gd: f.gd, gb: f.gb, bn: f.bn }) }
         if (me == 0 && fr % 6 == 0) sendG()
       }
       if (ph == 'intro') pt--;
-      if (!auth()) return;
+      if (!auth()) { if (fight && tm > 0) tm--; return }
       if (ph == 'intro') { if (pt <= 0) { ph = 'fight'; sendG() } }
       else if (fight) { tm--; if (A.hp <= 0 || B.hp <= 0 || tm <= 0) { const ra = A.hp / C[A.c].hp, rb = B.hp / C[B.c].hp, w = ra > rb ? 0 : rb > ra ? 1 : -1; if (w >= 0) wins[w]++; msg = tm <= 0 ? '时间到' : 'K.O.'; ph = 'ko'; pt = 150; sendG() } }
-      else if (ph == 'ko') { if (--pt <= 0) { if (wins[0] > 1 || wins[1] > 1) { ph = 'over'; sendG(); showOver() } else { rd++; reset(); sendG() } } }
+      else if (ph == 'ko') { if (--pt <= 0) { if (wins[0] >= winsNeeded() || wins[1] >= winsNeeded()) { ph = 'over'; sendG(); showOver() } else { rd++; reset(); sendG() } } }
     }
 
     /* ---------- 绘制 ---------- */
@@ -555,6 +737,9 @@
         ft = f.c == 4 ? 1.4 : f.c == 5 ? 1.45 : 1,              // 胖度：大胡子熊1.4 / 壮壮熊1.45，其余熊为1
         hf = 1 + (ft - 1) * .45, lg = 10 * (1 + (ft - 1) * .9), sx = 14 * ft;
       X.save(); X.translate(px, py); X.scale(f.f, 1);
+      // 受击压扁拉伸 + 受击白闪与抖动
+      if (f.sq > 0) { const q = Math.sin(f.sq * 3.14) * .14; X.scale(1 + q, 1 - q) }
+      if (f.st == 'hit' && f.t < 6) { X.translate((Math.random() - .5) * 5, 0); if (f.t < 4) { X.shadowColor = '#fff'; X.shadowBlur = 26 } }
       // 连段动作：cb 0 直拳/低扫腿 → 1 摆拳(后手)/回旋踢 → 2 前手勾拳/高位回旋踢 → 3 上勾拳/高位旋踢（终结）
       const cb = f.cb | 0, cm = at && !sp, ex = e / 46, kxF = [1, 1.1, 1.2, 1.35][cb], kyF = [.3, -.75, -1.05, -1.5][cb];
       if (cm) {
@@ -562,9 +747,11 @@
         X.translate(0, -hop * ex); X.rotate(lean * ex)          // 出招时身体前倾/后仰/腾起
       } else if (f.st == 'hit') X.rotate(-.18 * Math.max(0, 1 - f.t / 10));   // 受击后仰
       if (f.st == 'ko') X.rotate(-Math.min(1.45, f.t / 8));
+      if (f.st == 'down') X.rotate(-1.52 + Math.sin(Math.min(1, f.t / 8) * Math.PI) * .18);   // 倒地躺平，落地时轻微弹跳
+      if (f.st == 'getup') X.rotate(-1.52 * Math.max(0, 1 - f.t / 14));                       // 起身时身体回正
       if (sp && f.c == 4 && cg) X.translate(0, -50 * Math.sin(Math.PI * f.t / rf));
-      if (sp && f.c == 3 && f.t >= rf && f.t < 20) X.rotate(.28);
-      if ((f.st == 'hit' && f.t % 4 < 2) || (f.inv > 0 && f.st != 'hit' && fr % 6 < 3)) X.globalAlpha = .6;   // 受击闪烁 / 保护期闪烁
+      if (sp && f.c == 3 && f.t >= rf && f.t < rf + 14) X.rotate(.28);
+      if ((f.st == 'hit' && f.t > 3 && f.t % 4 < 2) || (f.inv > 0 && f.st != 'hit' && fr % 6 < 3)) X.globalAlpha = .6;   // 受击闪烁 / 保护期闪烁
       X.lineCap = 'round'; X.lineWidth = 13 * (1 + (ft - 1) * .8);   // 四肢变粗
       const ln = (c, a, b, d, g) => { X.strokeStyle = c; X.beginPath(); X.moveTo(a, b); X.lineTo(d, g); X.stroke() },
         el = (c, a, b, rx, ry) => { X.fillStyle = c; X.beginPath(); X.ellipse(a, b, rx, ry, 0, 0, 7); X.fill() };
@@ -638,10 +825,11 @@
     }
     // 状态特效：冰冻 / 眩晕 / 燃烧 / 雷击
     function zfx(f) {
-      if (!f.z) return; const x = f.x, y = GY - f.y;
+      if (!f.z && !(f.bn > 0) && f.st != 'down' && f.st != 'ko') return; const x = f.x, y = GY - f.y;
+      if (f.st == 'down') { X.font = '16px sans-serif'; X.fillStyle = '#ffd54f'; for (let i = 0; i < 3; i++) { const a = fr * .22 + i * 2.1; X.fillText('✶', x + Math.cos(a) * 20, y - 66 + Math.sin(a) * 6) } return }
       if (f.z == 'i') { X.fillStyle = 'rgba(150,220,255,.55)'; X.strokeStyle = '#fff'; X.lineWidth = 3; X.fillRect(x - 34, y - 118, 68, 124); X.strokeRect(x - 34, y - 118, 68, 124); X.fillStyle = 'rgba(255,255,255,.6)'; X.fillRect(x - 22, y - 104, 6, 40) }
       else if (f.z == 'd') { X.font = '18px sans-serif'; X.fillStyle = '#ffd54f'; for (let i = 0; i < 3; i++) { const a = fr * .15 + i * 2.1; X.fillText('★', x + Math.cos(a) * 26, y - 118 + Math.sin(a) * 7) } }
-      else if (f.z == 'b') { X.font = '24px serif'; for (let i = 0; i < 3; i++)X.fillText('🔥', x + (i - 1) * 22, y - 20 - (i % 2) * 40 - (fr * 2 + i * 15) % 20) }
+      else if (f.z == 'b' || f.bn > 0) { X.font = '24px serif'; for (let i = 0; i < 3; i++)X.fillText('🔥', x + (i - 1) * 22, y - 20 - (i % 2) * 40 - (fr * 2 + i * 15) % 20) }
       else if (f.z == 'e') { X.strokeStyle = '#ffe04a'; X.lineWidth = 3; for (let i = 0; i < 3; i++) { const bx = x - 30 + i * 30; X.beginPath(); X.moveTo(bx, y - 115); X.lineTo(bx + (Math.random() - .5) * 16, y - 80); X.lineTo(bx - 8, y - 50); X.lineTo(bx + 6, y - 10); X.stroke() } }
     }
     function drawP(p) {
@@ -671,7 +859,11 @@
     function draw() {
       X.clearRect(0, 0, W, H); if (!F.length) { X.drawImage(bg, 0, 0); return }
       const cast = ph == 'fight' && F.find(f => f.st == 'atk' && f.a == 's');
-      X.save(); if (shk > 0) X.translate((Math.random() - .5) * shk, (Math.random() - .5) * shk);
+      X.save();
+      if (shk > 0) X.translate((Math.random() - .5) * shk, (Math.random() - .5) * shk);
+      // 命中镜头拉近：以双方中点为中心
+      if (zm > .002) { const cx = (F[0].x + F[1].x) / 2; X.translate(cx, GY - 60); X.scale(1 + zm, 1 + zm); X.translate(-cx, -(GY - 60)) }
+
       X.drawImage(bg, 0, 0); X.textAlign = 'center';
       if (cast && cast.t < 34) { X.fillStyle = 'rgba(0,0,0,' + .45 * Math.min(1, cast.t / 5, (34 - cast.t) / 10) + ')'; X.fillRect(-10, -10, W + 20, H + 20) }
       for (const f of F) {
@@ -687,7 +879,21 @@
       }
       for (const p of P) drawP(p);
       for (const q of pa) { X.globalAlpha = Math.max(0, q.l / q.m); X.fillStyle = q.c; X.beginPath(); X.arc(q.x, GY - q.y, q.r, 0, 7); X.fill() } X.globalAlpha = 1;
-      for (const e of fx) { X.strokeStyle = e.b ? '#8cf' : '#fff'; X.lineWidth = 3; X.beginPath(); X.arc(e.x, GY - e.y, 6 + e.t * 3, 0, 7); X.stroke() }
+      // 命中/格挡特效：星芒、斩击线、护盾弧
+      for (const e of fx) {
+        const q = 1 - e.t / 12, cy = GY - e.y; X.save(); X.globalAlpha = Math.max(0, q); X.lineCap = 'round';
+        if (e.k == 's') {   // 命中:星芒 + 斜向斩击线 + 中心白闪
+          const sz = e.fin ? 85 : 28 + Math.min(e.dm, 15) * 2.5, ln = sz * Math.min(1, e.t / 3) * (.5 + q * .5), n = e.fin ? 12 : 8;
+          X.strokeStyle = e.fin ? '#fff' : (ZC[e.z] || '#ffe9b0'); X.lineWidth = 2 + q * 4;
+          X.beginPath(); for (let i = 0; i < n; i++) { const a = i * 6.283 / n + e.sd, r0 = 6 + e.t * 2, r1 = r0 + ln * (i % 2 ? .6 : 1); X.moveTo(e.x + Math.cos(a) * r0, cy + Math.sin(a) * r0); X.lineTo(e.x + Math.cos(a) * r1, cy + Math.sin(a) * r1) } X.stroke();
+          X.strokeStyle = '#fff'; X.lineWidth = (e.fin ? 9 : 5) * q; X.beginPath(); X.moveTo(e.x - e.dir * sz * .7, cy + sz * .35); X.lineTo(e.x + e.dir * sz * .7, cy - sz * .35); X.stroke();
+          if (e.t < 3) { X.fillStyle = '#fff'; X.beginPath(); X.arc(e.x, cy, 14 + sz * .2, 0, 7); X.fill() }
+        } else if (e.b) {   // 格挡:正面护盾弧
+          X.strokeStyle = '#8cf'; X.lineWidth = 5 * q + 1; const s = e.dir > 0 ? 0 : Math.PI; X.beginPath(); X.arc(e.x + e.dir * 12, cy, 30 + e.t * 1.5, s - 1.1, s + 1.1); X.stroke();
+        } else { X.strokeStyle = '#fff'; X.lineWidth = 3; X.beginPath(); X.arc(e.x, cy, 6 + e.t * 3, 0, 7); X.stroke() }
+        X.restore()
+      }
+      for (const e of dn) { const yy_ = GY - e.y - e.t * 1.2; X.globalAlpha = Math.min(1, (40 - e.t) / 15); X.font = 'italic bold ' + (typeof e.v == 'string' ? 20 : 26) + 'px sans-serif'; X.lineWidth = 4; X.strokeStyle = '#000'; X.strokeText(e.v, e.x, yy_); X.fillStyle = e.c; X.fillText(e.v, e.x, yy_) } X.globalAlpha = 1;
       X.restore();
       // 终结技命中白闪
       if (fl > 0) { X.fillStyle = 'rgba(255,255,255,' + fl * .06 + ')'; X.fillRect(0, 0, W, H) }
@@ -722,10 +928,29 @@
       }
       padC.classList.toggle('rd', F[mode == 'on' ? me : 0].en >= 50 && ph == 'fight')
     }
-    let last = 0, acc = 0;
+    /* ---------- 横屏检测 + 主循环 ---------- */
+    // 横屏限制仅对安卓生效：安卓竖屏时暂停逻辑帧（遮罩显示，转动设备后自动继续），其他设备不限制
+    const isAndroid = document.documentElement.classList.contains('android');
+    let last = 0, acc = 0, PAUSED = false;
+    const mqP = matchMedia('(orientation: portrait)');
+    PAUSED = isAndroid && mqP.matches;
+    const onOrient = () => { PAUSED = isAndroid && mqP.matches; acc = 0 };
+    mqP.addEventListener ? mqP.addEventListener('change', onOrient) : mqP.addListener(onOrient);
+
     (function loop(ts) {
-      requestAnimationFrame(loop); acc += Math.min(50, ts - last); last = ts;
-      while (acc >= 16.67) { acc -= 16.67; if (F.length && ph != 'over' && ui.style.display == 'none') step() } draw()
+      requestAnimationFrame(loop);
+      if (PAUSED) { last = ts; acc = 0; draw(); return }
+      acc += Math.min(50, ts - last); last = ts;
+      while (acc >= 16.67) {
+        acc -= 16.67;
+        if (F.length && ph != 'over' && ui.style.display == 'none') {
+          if (hs > 0) hs--;
+          // KO阶段离线慢动作
+          else if (ph == 'ko' && pt > 130 && mode != 'on' && ++sl % 3) { }
+          else step()
+        }
+      }
+      draw()
     })(0);
 
     /* ---------- 横屏适配 ---------- */
@@ -737,11 +962,11 @@
       document.documentElement.style.setProperty('--u', ah / 100 + 'px');
       a.classList.toggle('nw', aw < 560)
     }
-    // 触屏设备：用户点击后进入全屏并锁定横屏（需要用户手势；失败则忽略，竖屏时由 CSS 旋转兜底）
+    // 触屏设备：用户点击后进入全屏；横屏锁定仅对安卓生效（需要用户手势；失败则忽略，安卓竖屏由 #rotate 提示）
     function lockLand() {
       try {
         if (!matchMedia('(pointer:coarse)').matches) return;
-        const d = document.documentElement, rq = d.requestFullscreen || d.webkitRequestFullscreen, lk = () => { try { screen.orientation.lock('landscape').catch(() => { }) } catch (e) { } };
+        const d = document.documentElement, rq = d.requestFullscreen || d.webkitRequestFullscreen, lk = () => { if (!isAndroid) return; try { screen.orientation.lock('landscape').catch(() => { }) } catch (e) { } };
         if (rq && !document.fullscreenElement && !document.webkitFullscreenElement) { const r = rq.call(d); r && r.then ? r.then(lk).catch(() => { }) : lk() } else lk()
       } catch (e) { }
     }
@@ -751,12 +976,38 @@
     const show = h => { ui.innerHTML = h; ui.style.display = 'flex' };
     function dis() { try { peer && peer.destroy() } catch (e) { } conn = peer = null; setShare('') }
     function home() {
-      dis(); F = []; R = ''; $('pad').style.display = 'none';
-      show(`<div class=hm><div class=hl><h1>老熊格斗1.0</h1><p>🐻 各路熊熊高手，擂台见真章 🐻</p><small>手机：屏幕按键　电脑：WASD+JKL / 方向键+123<br>↑ 跳　↓ 防御　← → 左右移动　「绝」需蓝条过半<br>连击：拳/腿命中后再按一次，最多4段（拳腿任意搭配），第4段为重击终结<br>打满4段或吃到重击后对手有短暂保护，无法无限连击<br>防御（↓）会消耗防御槽（血条下方细条），见底即破防眩晕；超时按血量百分比判定</small></div><div class=hr><button onclick="go('ai')">人机对战</button><button onclick="go('2p')">本机双人</button><button onclick="go('on')">创建房间 · 邀请微信好友</button><button onclick="joinUI()">输入房间号加入</button></div></div>`)
+      try { if (document.fullscreenElement) document.exitFullscreen(); else if (document.webkitFullscreenElement) document.webkitExitFullscreen() } catch (e) { }
+      dis(); rsel = 0; rpk = { m: null, o: null }; F = []; R = ''; $('pad').style.display = 'none';
+      show(`<div class=hm><div class=hl><h1>老熊格斗4.0</h1><p>🐻 各路熊熊高手，擂台见真章 🐻</p><small>安卓需横屏游玩，其他设备不限<br>手机：屏幕按键　电脑：WASD+JKL / 方向键+123<br>↑ 跳　↓ 防御　← → 左右移动　「绝」需蓝条过半<br>连击：拳/腿命中后再按一次，最多4段（拳腿任意搭配），第4段为重击终结<br>拳：同距离出手快、格挡时扣 4 倍防御槽（破盾）；腿：同距离伤害高、终结段更远（收割）<br>打满4段或吃到重击后对手有短暂保护，无法无限连击<br>重击终结或高击退招式命中会把对手直接击倒：倒地全程无敌，起身后短暂无敌，倒地即可解除连击<br>防御（↓）会消耗防御槽（血条下方细条），见底即破防眩晕；超时按血量百分比判定</small></div><div class=hr><button onclick="go('ai')">人机对战</button><button onclick="go('2p')">本机双人</button><button onclick="go('on')">创建房间 · 邀请微信好友</button><button onclick="joinUI()">输入房间号加入</button><button class=s onclick="fsGo()">全屏开战（隐藏浏览器栏）</button></div></div>`)
     }
+    // 全屏进入：先尝试 Fullscreen API（需用户点击触发），成功后再走正常流程
+    function fsGo() { lockLand() }
+    document.addEventListener('fullscreenchange', () => setTimeout(fit, 120));
+    document.addEventListener('webkitfullscreenchange', () => setTimeout(fit, 120));
     function go(m) {
       lockLand(); mode = m; stage = 0;
       if (m == 'on' && (typeof Peer == 'undefined' || typeof RTCPeerConnection == 'undefined')) return show('<h2>当前环境无法联机</h2><p>请检查网络，或用系统浏览器（Safari / Chrome）打开本页</p><button class=s onclick=home()>返回</button>');
+
+      // 联机访客（被邀请者）直接进入选角，跳过赛制选择
+      if (m == 'on' && R) {
+        goSel(m);
+      } else {
+        selMode(m);
+      }
+    }
+    function selMode(m) {
+      const modes = [[1, '一局决', '单局定胜负'], [3, '三局两胜', '传统竞技'], [5, '五局三胜', '终极对决']];
+      show(`<h2>选择赛制</h2>
+        <div class="mode-row">${modes.map(([v, n, d]) => `<button class="mode-btn${matchBo == v ? ' sel' : ''}" onclick="setBO(${v})">${n}<br><small>${d}</small></button>`).join('')}</div>
+        <p class="mode-label" id="bo-desc">${modes.find(([v]) => v === matchBo)[1]} · ${modes.find(([v]) => v === matchBo)[2]}</p>
+        <div class=bt style="margin-top:clamp(6px,calc(var(--u)*2.5),14px)">
+          <button onclick="goSel('${m}')">下一步 · 选择英雄</button>
+          <button class=s onclick=home()>返回</button>
+        </div>`)
+    }
+    function setBO(v) { matchBo = v; selMode(mode) }
+    function goSel(m) {
+      mode = m;
       sel(m == '2p' ? 'P1 选择角色' : R ? '选择你的熊' : '选择你的熊（你是房主）')
     }
     function sel(t) {
@@ -772,11 +1023,19 @@
         start()
       }
       else if (mode == '2p') { if (!stage) { c0 = i; stage = 1; sel('P2 选择角色') } else { c1 = i; start() } }
-      else { c0 = i; R ? join() : host() }
+      else {
+        // 战后重选：双方各选各的，互相发送选择；两边都选完后由房主开局
+        if (rsel) {
+          rpk.m = i; send({ t: 'pk', c: i });
+          show(`<h2>你选了 ${C[i].n}，等待对方选择…</h2><button class=s onclick=home()>返回</button>`);
+          tryGo()
+        }
+        else { c0 = i; R ? join() : host() }
+      }
     }
-    function start() { $('pad').style.display = mode == '2p' ? 'none' : 'flex'; wins = [0, 0]; rd = 1; reset(); ui.style.display = 'none' }
+    function start() { $('pad').style.display = mode == '2p' ? 'none' : 'flex'; wins = [0, 0]; rd = 1; reset(); ui.style.display = 'none'; if (auth()) sendG() }
     const er = e => show(`<h2>连接失败</h2><p>${e.type == 'peer-unavailable' ? '房间不存在或已关闭，请核对房间号' : e.type || e}</p><button onclick=home()>返回</button>`);
-    const lost = () => { if (ph != 'over') { F = []; show('<h2>对方已断开</h2><button onclick=home()>返回主菜单</button>') } };
+    const lost = () => { if (ph != 'over' || rsel) { F = []; show('<h2>对方已断开</h2><button onclick=home()>返回主菜单</button>') } };
     function host() {
       me = 0; const al = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', code = [0, 0, 0, 0].map(() => al[Math.random() * al.length | 0]).join('');
       let shown = 0; peer = new Peer('laoxiong-' + code, PC);
@@ -823,24 +1082,62 @@
     function joinUI() { mode = 'on'; show(`<h2>输入房间号</h2><input id=rc maxlength=4 autocapitalize=characters placeholder="4位房间号" style="text-align:center;font-size:28px;letter-spacing:6px"><small id=tip>向房主要房间号，或直接点开他发来的链接</small><div class=bt><button onclick=jr()>下一步 · 选择角色</button><button class=s onclick=home()>返回</button></div>`); $('rc').focus() }
     function jr() { const v = $('rc').value.trim().toUpperCase(); if (v.length != 4) return $('tip').textContent = '请输入4位房间号'; R = v; go('on') }
     function onMsg(m) {
-      if (m.t == 'hi') { c1 = m.c; send({ t: 'go', h: c0, g: m.c }); start() }
-      else if (m.t == 'go') { c0 = m.h; c1 = m.g; start() }
+      if (m.t == 'hi') {
+        c1 = m.c;
+        // bo 参数：把房主的赛制同步给访客
+        send({ t: 'go', h: c0, g: m.c, bo: matchBo });
+        start();
+      }
+      else if (m.t == 'go') {
+        c0 = m.h;
+        c1 = m.g;
+        // 同步房主的赛制设置
+        if (m.bo) matchBo = m.bo;
+        start();
+      }
       else if (m.t == 's' && F.length) {
-        const r = F[1 - me], dm = r.hp - m.hp; if (dm > 4) hitFx(m.x, m.y + 60, dm, m.z, F[me].st == 'atk' && !!F[me].A && !!F[me].A.fin);   // 对方受击：本端同步播放命中特效（本端正在出终结技则加强）
-        Object.assign(r, { x: m.x, y: m.y, f: m.f, st: m.st, t: m.tt, hp: m.hp, en: m.en, n: m.n, a: m.a, A: gA(m.a, r.c, m.cb), vx: m.vx, z: m.z, cb: m.cb, seen: m.sn, cc: m.cc, cd: m.cd, inv: m.iv, gd: m.gd, gb: m.gb })
+        const r = F[1 - me], dm = r.hp - m.hp;
+        if (dm > 4) { hitFx(m.x, m.y + 60, dm, m.z, F[me].st == 'atk' && !!F[me].A && !!F[me].A.fin, -m.f); pop(m.x, m.y + 125, Math.round(dm), '#fff') }   // 对方受击：本端同步播放命中特效
+        Object.assign(r, { x: m.x, y: m.y, f: m.f, st: m.st, t: m.tt, hp: m.hp, en: m.en, n: m.n, a: m.a, A: gA(m.a, r.c, m.cb), vx: m.vx, z: m.z, cb: m.cb, seen: m.sn, cc: m.cc, cd: m.cd, inv: m.iv, gd: m.gd, gb: m.gb, bn: m.bn })
       }
       else if (m.t == 'p' && F.length) (m.l || []).forEach(addP);
       else if (m.t == 'g' && me == 1) {
         if (m.ph == 'intro' && ph != 'intro') { reset(); ui.style.display = 'none' }
-        ph = m.ph; tm = m.tm; wins = m.w; rd = m.rd; msg = m.msg; if (ph == 'over' && ui.style.display == 'none') showOver()
+        ph = m.ph; tm = m.tm; wins = m.w; rd = m.rd; msg = m.msg; if (m.bo) matchBo = m.bo; if (ph == 'over' && ui.style.display == 'none') showOver()
       }
       else if (m.t == 'rm' && me == 0) newMatch()
+      else if (m.t == 'rp') { if (!rsel) enterRepick() }
+      else if (m.t == 'pk') { rpk.o = m.c; tryGo() }
+      else if (m.t == 'go2') { c0 = m.h; c1 = m.g; wins = [0, 0]; rd = 1; reset(); ui.style.display = 'none' }
     }
     function showOver() {
       const w = wins[0] > wins[1] ? 0 : 1;
-      show(`<h1>${C[F[w].c].n}<br>获胜！</h1><div class=bt><button onclick=again()>再战一局</button><button class=s onclick=home()>主菜单</button></div>`)
+      const boLabel = matchBo == 1 ? '一局决' : matchBo == 3 ? '三局两胜' : '五局三胜';
+      show(`<h1>${C[F[w].c].n}<br>获胜！</h1>
+        <p style="color:#c9b3a3;font-size:clamp(12px,calc(var(--u)*3.6),15px)">${boLabel} · ${wins[0]}:${wins[1]}</p>
+        <div class=bt>
+          <button onclick=again()>再战一局</button>
+          <button onclick=repick()>重选英雄</button>
+          <button class=s onclick=home()>主菜单</button>
+        </div>`)
     }
-    function again() { if (mode == 'on' && me == 1) { send({ t: 'rm' }); show('<h2>等待房主开局…</h2>') } else newMatch() }
+    function again() {
+      if (mode == 'on' && me == 1) { send({ t: 'rm' }); show('<h2>等待房主开局…</h2>') } else newMatch()
+    }
+    // 重选英雄：保留房间（联机），回到选角界面，重新计胜负
+    function enterRepick() { rsel = 1; stage = 0; sel('重选你的熊（双方各自选择，选完自动开战）') }
+    // 房主：双方都选好后开局（房主=左侧 c0，访客=右侧 c1）
+    function tryGo() {
+      if (me != 0 || rpk.m == null || rpk.o == null) return;
+      c0 = rpk.m; c1 = rpk.o; send({ t: 'go2', h: c0, g: c1 }); newMatch()
+    }
+    function repick() {
+      if (mode == 'on') {
+        send({ t: 'rp' }); enterRepick()
+      } else {
+        stage = 0; sel(mode == '2p' ? 'P1 重选角色' : '重选你的熊')
+      }
+    }
 
     /* ---------- 输入 ---------- */
     onkeydown = e => { K[e.key.toLowerCase()] = 1; if (e.key.startsWith('Arrow')) e.preventDefault() }; onkeyup = e => { K[e.key.toLowerCase()] = 0 };
@@ -849,6 +1146,11 @@
       b.addEventListener('pointerdown', s(1));['pointerup', 'pointercancel', 'pointerleave'].forEach(n => b.addEventListener(n, s(0)))
     });
     oncontextmenu = e => e.preventDefault();
+    // iOS：阻止捏合手势（gesturestart 不受 preventDefault 影响，需显式拦截）
+    document.addEventListener('gesturestart', e => e.preventDefault());
+    document.addEventListener('gesturechange', e => e.preventDefault());
+    // 长按/双击选中了文字时立刻清空选区，避免「搜一搜/翻译」菜单找到目标
+    document.addEventListener('selectionchange', () => { const s = getSelection(); if (s && s.rangeCount && !s.isCollapsed) s.removeAllRanges() });
     if (R) show(`<h1>老熊格斗</h1><p>好友邀请你来一场熊熊对决！</p><button onclick="go('on')">接受挑战</button>`); else home();
   </script>
 </body>
